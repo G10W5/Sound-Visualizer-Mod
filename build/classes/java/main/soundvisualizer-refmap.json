@@ -1,0 +1,14 @@
+{
+  "mappings": {
+    "com/example/soundvisualizer/mixin/SoundManagerMixin": {
+      "play(Lnet/minecraft/client/sound/SoundInstance;)V": "Lnet/minecraft/class_1144;method_4873(Lnet/minecraft/class_1113;)V"
+    }
+  },
+  "data": {
+    "named:intermediary": {
+      "com/example/soundvisualizer/mixin/SoundManagerMixin": {
+        "play(Lnet/minecraft/client/sound/SoundInstance;)V": "Lnet/minecraft/class_1144;method_4873(Lnet/minecraft/class_1113;)V"
+      }
+    }
+  }
+}

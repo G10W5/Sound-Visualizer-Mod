@@ -1,0 +1,13 @@
+{
+    "title.soundvisualizer.config": "Sound Visualizer Settings",
+    "category.soundvisualizer.general": "General Settings",
+    "option.soundvisualizer.color": "Indicator Color",
+    "option.soundvisualizer.size": "Indicator Size",
+    "option.soundvisualizer.radius": "HUD Radius",
+    "option.soundvisualizer.style": "Indicator Style",
+    "option.soundvisualizer.fadeTime": "Fade Time (Seconds)",
+    "option.soundvisualizer.distanceScaling": "Scale by Distance",
+    "option.soundvisualizer.subtitleOnly": "Smarter Detection (Subtitles Only)",
+    "option.soundvisualizer.showIcons": "Show Sound Icons",
+    "tooltip.soundvisualizer.color": "Click the colored square on the left to open the color wheel!"
+}
