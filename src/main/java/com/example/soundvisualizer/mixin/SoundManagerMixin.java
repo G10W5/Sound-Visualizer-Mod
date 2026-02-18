@@ -11,54 +11,78 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(net.minecraft.client.sound.SoundManager.class)
 public abstract class SoundManagerMixin {
 
-    @Shadow
-    public abstract net.minecraft.client.sound.WeightedSoundSet get(net.minecraft.util.Identifier id);
-
     @Inject(method = "play(Lnet/minecraft/client/sound/SoundInstance;)V", at = @At("HEAD"))
     private void onPlay(net.minecraft.client.sound.SoundInstance soundInstance, CallbackInfo ci) {
         if (soundInstance == null)
             return;
 
+        // Use a simple log to avoid any potential toString() recursion/NPE
+        System.out.println("[SoundVisualizer 1.0.9] MIXIN START");
+
         try {
-            com.example.soundvisualizer.SoundVisualizerConfig config = com.example.soundvisualizer.SoundVisualizerConfig.INSTANCE;
             net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
             if (client == null || client.player == null)
                 return;
 
-            // Basic filtering
-            if (soundInstance.isRelative())
+            // Defensively check relative
+            boolean isRelative = false;
+            try {
+                isRelative = soundInstance.isRelative();
+            } catch (Throwable t) {
+            }
+            if (isRelative)
                 return;
 
-            // Distance filtering
-            double distSq = client.player.squaredDistanceTo(soundInstance.getX(), soundInstance.getY(),
-                    soundInstance.getZ());
-            if (distSq > 64 * 64)
-                return; // Slightly larger range for safety
+            // DEFENSIVE ATTRIBUTE GRABBING (GHOST DETECTION)
+            double x = 0, y = 0, z = 0;
+            float vol = 1.0f;
+            net.minecraft.util.Identifier id = null;
 
-            // Volume filtering
-            if (soundInstance.getVolume() < 0.1f)
+            try {
+                id = soundInstance.getId();
+            } catch (Throwable t) {
+                System.out.println("[SoundVisualizer 1.0.9] ID GET FAILED");
+            }
+            if (id == null)
                 return;
 
-            // SMART DETECTION: Check for subtitles manually
-            net.minecraft.text.Text subtitle = null;
-            net.minecraft.client.sound.WeightedSoundSet soundSet = this.get(soundInstance.getId());
-            if (soundSet != null) {
-                subtitle = soundSet.getSubtitle();
+            try {
+                x = soundInstance.getX();
+            } catch (Throwable t) {
+                System.out.println("[SoundVisualizer 1.0.9] X GET FAILED");
+            }
+            try {
+                y = soundInstance.getY();
+            } catch (Throwable t) {
+                System.out.println("[SoundVisualizer 1.0.9] Y GET FAILED");
+            }
+            try {
+                z = soundInstance.getZ();
+            } catch (Throwable t) {
+                System.out.println("[SoundVisualizer 1.0.9] Z GET FAILED");
+            }
+            try {
+                vol = soundInstance.getVolume();
+            } catch (Throwable t) {
+                System.out.println("[SoundVisualizer 1.0.9] VOL GET FAILED");
             }
 
-            if (config.subtitleOnly && subtitle == null)
-                return;
+            System.out.println("[SoundVisualizer 1.0.9] Pushing to vault: " + id + " at " + x + "," + y + "," + z);
 
-            com.example.soundvisualizer.SoundVisualizerClient.RENDERER.addHit(
-                    soundInstance.getId(),
-                    new net.minecraft.util.math.Vec3d(
-                            soundInstance.getX(),
-                            soundInstance.getY(),
-                            soundInstance.getZ()),
-                    subtitle,
-                    32.0f, // Pass a reasonable default range
-                    soundInstance.getVolume());
-        } catch (Exception ignored) {
+            // PUSH TO THE CENTRAL VAULT (GHOST MODE)
+            com.example.soundvisualizer.SoundVisualizerClient.HITS.add(
+                    new com.example.soundvisualizer.SoundVisualizerHit(
+                            id,
+                            new net.minecraft.util.math.Vec3d(x, y, z),
+                            null, // Still no subtitle for stability
+                            64.0f,
+                            vol));
+
+            System.out.println("[SoundVisualizer 1.0.9] PUSH SUCCESS. Vault: "
+                    + com.example.soundvisualizer.SoundVisualizerClient.HITS.size());
+
+        } catch (Throwable t) {
+            System.out.println("[SoundVisualizer 1.0.9] MIXIN TERMINAL ERROR: " + t.toString());
         }
     }
 }

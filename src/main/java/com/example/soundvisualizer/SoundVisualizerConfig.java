@@ -20,7 +20,7 @@ public class SoundVisualizerConfig {
     public String style = "ARCH"; // ARCH, DOT, ICON
     public boolean showIcons = false;
     public boolean distanceScaling = true;
-    public boolean subtitleOnly = true;
+    public boolean subtitleOnly = false;
 
     private final Path configPath;
 

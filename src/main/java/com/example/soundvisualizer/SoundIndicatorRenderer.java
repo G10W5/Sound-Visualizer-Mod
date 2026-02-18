@@ -10,17 +10,21 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.Identifier;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class SoundIndicatorRenderer implements HudRenderCallback {
-    private final List<SoundVisualizerHit> hits = new ArrayList<>();
+    private static int soundCounter = 0;
+
+    public static void addStaticHit(net.minecraft.util.Identifier id, Vec3d pos, net.minecraft.text.Text subtitle,
+            float range,
+            float volume) {
+        SoundVisualizerClient.HITS.add(new SoundVisualizerHit(id, pos, subtitle, range, volume));
+    }
 
     public void addHit(net.minecraft.util.Identifier id, Vec3d pos, net.minecraft.text.Text subtitle, float range,
             float volume) {
-        synchronized (hits) {
-            hits.add(new SoundVisualizerHit(id, pos, subtitle, range, volume));
-        }
+        addStaticHit(id, pos, subtitle, range, volume);
     }
 
     public void addHit(net.minecraft.util.Identifier id, Vec3d pos) {
@@ -37,94 +41,104 @@ public class SoundIndicatorRenderer implements HudRenderCallback {
         int height = drawContext.getScaledWindowHeight();
         int centerX = width / 2;
         int centerY = height / 2;
+
         SoundVisualizerConfig config = SoundVisualizerConfig.INSTANCE;
 
-        synchronized (hits) {
-            hits.removeIf(SoundVisualizerHit::isExpired);
+        // Auto-cleanup expired sounds
+        SoundVisualizerClient.HITS.removeIf(SoundVisualizerHit::isExpired);
 
-            for (SoundVisualizerHit hit : hits) {
-                hit.update();
+        // Safety cap
+        if (SoundVisualizerClient.HITS.size() > 100) {
+            SoundVisualizerClient.HITS.clear();
+        }
 
-                // Calculate direction relative to player
-                Vec3d playerPos = client.player.getPos();
-                Vec3d toSound = hit.position.subtract(playerPos).normalize();
+        for (SoundVisualizerHit hit : SoundVisualizerClient.HITS) {
+            hit.update();
 
-                // Get player looking direction (yaw)
-                float yaw = client.player.getYaw();
+            // Calculate direction relative to player
+            Vec3d playerPos = client.player.getPos();
+            Vec3d toSound = hit.position.subtract(playerPos).normalize();
 
-                // Angle to sound in horizontal plane
-                double angleToSound = MathHelper.atan2(toSound.z, toSound.x) * (180 / Math.PI) - 90;
-                double relativeAngle = MathHelper.wrapDegrees(angleToSound - yaw);
+            // Get player looking direction (yaw)
+            float yaw = client.player.getYaw();
 
-                double radius = config.radius;
-                double rad = Math.toRadians(relativeAngle);
-                int x = (int) (centerX + Math.sin(rad) * radius);
-                int y = (int) (centerY - Math.cos(rad) * radius);
+            // Angle to sound in horizontal plane
+            double angleToSound = MathHelper.atan2(toSound.z, toSound.x) * (180 / Math.PI) - 90;
+            double relativeAngle = MathHelper.wrapDegrees(angleToSound - yaw);
 
-                // Smarter Alpha: combine fade alpha with distance/volume alpha
-                float distScale = 1.0f;
-                if (config.distanceScaling) {
-                    double dist = client.player.getPos().distanceTo(hit.position);
-                    float range = hit.range > 0 ? hit.range : 48.0f;
-                    // Relaxed falloff: stay visible up to 1.5x range
-                    distScale = (float) MathHelper.clamp(1.0 - (dist / (range * 1.5)), 0.1, 1.0);
-                }
+            double radius = config.radius;
+            double rad = Math.toRadians(relativeAngle);
+            int x = (int) (centerX + Math.sin(rad) * radius);
+            int y = (int) (centerY - Math.cos(rad) * radius);
 
-                // Volume also adjusts base visibility
-                float volumeScale = MathHelper.clamp(hit.volume * 1.5f, 0.3f, 1.0f);
-                float finalAlpha = hit.alpha * distScale * volumeScale;
+            // Smarter Alpha: combine fade alpha with distance/volume alpha
+            float distScale = 1.0f;
+            if (config.distanceScaling) {
+                double dist = client.player.getPos().distanceTo(hit.position);
+                float range = hit.range > 0 ? hit.range : 48.0f;
+                // Relaxed falloff: stay visible up to 1.5x range
+                distScale = (float) MathHelper.clamp(1.0 - (dist / (range * 1.5)), 0.1, 1.0);
+            }
 
-                if (finalAlpha < 0.1f)
-                    continue;
+            // Volume also adjusts base visibility
+            float volumeScale = MathHelper.clamp(hit.volume * 1.5f, 0.3f, 1.0f);
+            float finalAlpha = hit.alpha * distScale * volumeScale;
 
-                int color = ((int) (finalAlpha * 255) << 24) | (config.indicatorColor & 0xFFFFFF);
-                // Darker, more visible shadow
-                int shadowColor = ((int) (finalAlpha * 0.8f * 255) << 24) | 0x000000;
-                float finalSize = config.indicatorSize * distScale;
+            if (finalAlpha < 0.001f)
+                continue;
 
-                if ("ARCH".equals(config.style)) {
-                    // Draw shadow first (offset by 2 pixels for depth)
-                    drawArc(drawContext, x + 2, y + 2, (float) relativeAngle, shadowColor, finalSize);
-                    drawArc(drawContext, x, y, (float) relativeAngle, color, finalSize);
-                } else {
-                    drawContext.fill((int) (x - finalSize / 2), (int) (y - finalSize / 2), (int) (x + finalSize / 2),
-                            (int) (y + finalSize / 2), color);
-                }
+            if (soundCounter % 100 == 0) {
+                System.out.println("[SoundVisualizer] RENDER HIT: x=" + x + ", y=" + y + ", alpha=" + finalAlpha
+                        + ", style=" + config.style);
+            }
 
-                // ALWAYS DRAW ICONS IF ENABLED (On top of chevron/dot)
-                if (config.showIcons) {
-                    ItemStack stack = getIconForItem(hit.soundId);
-                    if (stack == null || stack.isEmpty())
-                        stack = new ItemStack(Items.NOTE_BLOCK);
+            int color = ((int) (finalAlpha * 255) << 24) | (config.indicatorColor & 0xFFFFFF);
+            // Darker, more visible shadow
+            int shadowColor = ((int) (finalAlpha * 0.8f * 255) << 24) | 0x000000;
+            float finalSize = config.indicatorSize * distScale;
 
-                    if (stack != null && !stack.isEmpty()) {
-                        drawContext.getMatrices().push();
-                        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
-                        com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
-                        com.mojang.blaze3d.systems.RenderSystem.disableDepthTest();
+            if ("ARCH".equals(config.style)) {
+                // Draw shadow first (offset by 2 pixels for depth)
+                drawArc(drawContext, x + 2, y + 2, (float) relativeAngle, shadowColor, finalSize);
+                drawArc(drawContext, x, y, (float) relativeAngle, color, finalSize);
+            } else {
+                drawContext.fill((int) (x - finalSize / 2), (int) (y - finalSize / 2), (int) (x + finalSize / 2),
+                        (int) (y + finalSize / 2), color);
+            }
 
-                        // Center icon at (x, y)
-                        drawContext.getMatrices().translate(x, y, 0);
+            // ALWAYS DRAW ICONS IF ENABLED (On top of chevron/dot)
+            if (config.showIcons) {
+                ItemStack stack = getIconForItem(hit.soundId);
+                if (stack == null || stack.isEmpty())
+                    stack = new ItemStack(Items.NOTE_BLOCK);
 
-                        // Icons should be slightly smaller than the chevron overall but clear
-                        float iconScale = (config.indicatorSize / 4.0f) * distScale * 1.5f;
-                        drawContext.getMatrices().scale(iconScale, iconScale, 1.0f);
+                if (stack != null && !stack.isEmpty()) {
+                    drawContext.getMatrices().push();
+                    com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+                    com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
+                    com.mojang.blaze3d.systems.RenderSystem.disableDepthTest();
 
-                        // Icon Shadow (Soft)
-                        drawContext.getMatrices().push();
-                        drawContext.getMatrices().translate(0.5, 0.5, 0);
-                        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(0.0f, 0.0f, 0.0f, finalAlpha * 0.5f);
-                        drawContext.drawItem(stack, -8, -8);
-                        drawContext.getMatrices().pop();
+                    // Center icon at (x, y)
+                    drawContext.getMatrices().translate(x, y, 0);
 
-                        // Actual Icon with alpha
-                        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, finalAlpha);
-                        drawContext.drawItem(stack, -8, -8);
+                    // Icons should be slightly smaller than the chevron overall but clear
+                    float iconScale = (config.indicatorSize / 4.0f) * distScale * 1.5f;
+                    drawContext.getMatrices().scale(iconScale, iconScale, 1.0f);
 
-                        com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-                        com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
-                        drawContext.getMatrices().pop();
-                    }
+                    // Icon Shadow (Soft)
+                    drawContext.getMatrices().push();
+                    drawContext.getMatrices().translate(0.5, 0.5, 0);
+                    com.mojang.blaze3d.systems.RenderSystem.setShaderColor(0.0f, 0.0f, 0.0f, finalAlpha * 0.5f);
+                    drawContext.drawItem(stack, -8, -8);
+                    drawContext.getMatrices().pop();
+
+                    // Actual Icon with alpha
+                    com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, finalAlpha);
+                    drawContext.drawItem(stack, -8, -8);
+
+                    com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+                    com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
+                    drawContext.getMatrices().pop();
                 }
             }
         }
@@ -137,8 +151,8 @@ public class SoundIndicatorRenderer implements HudRenderCallback {
 
         // POINT AT SOUND: tip at (0,0), wings go TOWARDS center (Local Y-)
         // Make it MUCH thicker
-        int thickness = Math.max(3, (int) (size / 2.5));
-        float wingLength = size * 2.5f;
+        int thickness = Math.max(4, (int) (size / 2.0)); // Thicker
+        float wingLength = size * 2.8f; // Longer wings
 
         // Left wing (points down and in)
         context.getMatrices().push();
