@@ -1,7 +1,5 @@
 package com.example.soundvisualizer;
 
-import net.minecraft.util.math.Vec3d;
-
 public class SoundVisualizerHit {
     public final net.minecraft.util.Identifier soundId;
     public final net.minecraft.util.math.Vec3d position;

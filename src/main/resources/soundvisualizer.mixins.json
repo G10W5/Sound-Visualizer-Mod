@@ -4,7 +4,7 @@
     "refmap": "soundvisualizer-refmap.json",
     "compatibilityLevel": "JAVA_21",
     "client": [
-        "SoundSystemMixin"
+        "SoundManagerMixin"
     ],
     "injectors": {
         "defaultRequire": 1

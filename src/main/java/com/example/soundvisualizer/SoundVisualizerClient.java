@@ -15,7 +15,7 @@ public class SoundVisualizerClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        LOGGER.info("Sound Visualizer initialized! [Version 1.2.0]");
+        LOGGER.info("Sound Visualizer initialized! [Version 1.3.0]");
         HudRenderCallback.EVENT.register(RENDERER);
     }
 
@@ -94,7 +94,7 @@ public class SoundVisualizerClient implements ClientModInitializer {
             // FILTER: Skip local player footsteps
             String path = id.getPath();
             if (path.contains("step") || path.contains("footstep")) {
-                double distSq = client.player.getPos().squaredDistanceTo(x, y, z);
+                double distSq = client.player.squaredDistanceTo(x, y, z);
                 if (distSq < 0.25)
                     return;
             }
@@ -120,7 +120,7 @@ public class SoundVisualizerClient implements ClientModInitializer {
 
             // DISTANCE FILTER: if the sound is beyond hearing range, discard it.
             // Uses the user-defined maxHearingDistance (default 16).
-            double actualDist = client.player.getPos().distanceTo(new net.minecraft.util.math.Vec3d(x, y, z));
+            double actualDist = Math.sqrt(client.player.squaredDistanceTo(x, y, z));
             float hearingRange = Math.max(8.0f, vol * config.maxHearingDistance);
             if (actualDist > hearingRange) {
                 return;

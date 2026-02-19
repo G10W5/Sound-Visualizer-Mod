@@ -54,8 +54,10 @@ public class SoundIndicatorRenderer implements HudRenderCallback {
             int centerX, int centerY, SoundVisualizerConfig config) {
         hit.update();
 
-        Vec3d playerPos = client.player.getPos();
-        Vec3d toSound = hit.position.subtract(playerPos).normalize();
+        double px = client.player.getX();
+        double py = client.player.getY();
+        double pz = client.player.getZ();
+        Vec3d toSound = hit.position.subtract(px, py, pz).normalize();
         float yaw = client.player.getYaw();
 
         double angleToSound = MathHelper.atan2(toSound.z, toSound.x) * (180.0 / Math.PI) - 90.0;
@@ -68,7 +70,7 @@ public class SoundIndicatorRenderer implements HudRenderCallback {
 
         float distScale = 1.0f;
         if (config.distanceScaling) {
-            double dist = playerPos.distanceTo(hit.position);
+            double dist = hit.position.distanceTo(new Vec3d(px, py, pz));
             float range = hit.range > 0 ? hit.range : 48.0f;
             distScale = (float) MathHelper.clamp(1.0 - dist / (range * 1.5), 0.1, 1.0);
         }
