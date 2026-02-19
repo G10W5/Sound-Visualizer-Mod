@@ -1,0 +1,12 @@
+{
+    "required": true,
+    "package": "com.example.soundvisualizer.mixin",
+    "refmap": "soundvisualizer-refmap.json",
+    "compatibilityLevel": "JAVA_21",
+    "client": [
+        "SoundSystemMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

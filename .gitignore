@@ -1,0 +1,20 @@
+# Gradle files
+.gradle/
+build/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Fabric / Loom
+run/
+.quilt/
+.gradle-home/
+gradle-app.properties
