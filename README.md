@@ -1,6 +1,6 @@
 # Sound Visualizer
 
-**Never miss a sound again.** Sound Visualizer is a client-side tactical mod for Minecraft that translates in-game audio into intuitive HUD indicators. Whether you're navigating deep caves or engaged in intense PvP, this mod provides the situational awareness you need across all 1.21.x versions.
+**Never miss a sound again.** Sound Visualizer is a client-side mod for Minecraft that translates in-game audio into intuitive HUD indicators. Whether you're navigating deep caves or engaged in intense PvP, this mod provides the situational awareness you need across 1.21.x versions.
 
 ---
 
