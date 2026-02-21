@@ -35,6 +35,48 @@ public class SoundVisualizerModMenu implements ModMenuApi {
                                         })
                                         .build());
 
+                        // --- Category Colors ---
+                        general.addEntry(eb
+                                        .startColorField(Text.translatable("option.soundvisualizer.colorHostile"),
+                                                        config.colorHostile)
+                                        .setDefaultValue(SoundCategory.HOSTILE.getDefaultColor())
+                                        .setSaveConsumer(val -> config.colorHostile = val & 0xFFFFFF)
+                                        .build());
+
+                        general.addEntry(eb
+                                        .startColorField(Text.translatable("option.soundvisualizer.colorFriendly"),
+                                                        config.colorFriendly)
+                                        .setDefaultValue(SoundCategory.FRIENDLY.getDefaultColor())
+                                        .setSaveConsumer(val -> config.colorFriendly = val & 0xFFFFFF)
+                                        .build());
+
+                        general.addEntry(eb
+                                        .startColorField(Text.translatable("option.soundvisualizer.colorAmbient"),
+                                                        config.colorAmbient)
+                                        .setDefaultValue(SoundCategory.AMBIENT.getDefaultColor())
+                                        .setSaveConsumer(val -> config.colorAmbient = val & 0xFFFFFF)
+                                        .build());
+
+                        general.addEntry(eb
+                                        .startColorField(Text.translatable("option.soundvisualizer.colorBlocks"),
+                                                        config.colorBlocks)
+                                        .setSaveConsumer(val -> config.colorBlocks = val & 0xFFFFFF)
+                                        .build());
+
+                        general.addEntry(eb
+                                        .startColorField(Text.translatable("option.soundvisualizer.colorPlayer"),
+                                                        config.colorPlayer)
+                                        .setDefaultValue(SoundCategory.PLAYER.getDefaultColor())
+                                        .setSaveConsumer(val -> config.colorPlayer = val & 0xFFFFFF)
+                                        .build());
+
+                        general.addEntry(eb
+                                        .startColorField(Text.translatable("option.soundvisualizer.colorNeutral"),
+                                                        config.colorNeutral)
+                                        .setDefaultValue(SoundCategory.NEUTRAL.getDefaultColor())
+                                        .setSaveConsumer(val -> config.colorNeutral = val & 0xFFFFFF)
+                                        .build());
+
                         // Indicator Size (radius of the dot/arc)
                         general.addEntry(eb
                                         .startIntSlider(Text.translatable("option.soundvisualizer.size"),

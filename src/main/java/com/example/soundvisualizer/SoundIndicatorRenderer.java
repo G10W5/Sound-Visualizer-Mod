@@ -19,7 +19,8 @@ public class SoundIndicatorRenderer implements HudRenderCallback {
 
     public static void addStaticHit(Identifier id, Vec3d pos, net.minecraft.text.Text subtitle, float range,
             float volume) {
-        SoundVisualizerClient.HITS.add(new SoundVisualizerHit(id, pos, subtitle, range, volume));
+        // Fallback for manual/static hits
+        SoundVisualizerClient.HITS.add(new SoundVisualizerHit(id, pos, subtitle, range, volume, SoundCategory.NEUTRAL));
     }
 
     @Override
@@ -80,9 +81,10 @@ public class SoundIndicatorRenderer implements HudRenderCallback {
             return;
 
         int a = (int) (alpha * 255) & 0xFF;
-        int r = (config.indicatorColor >> 16) & 0xFF;
-        int g = (config.indicatorColor >> 8) & 0xFF;
-        int b = config.indicatorColor & 0xFF;
+        int categoryColor = getCategoryColor(hit.category, config);
+        int r = (categoryColor >> 16) & 0xFF;
+        int g = (categoryColor >> 8) & 0xFF;
+        int b = categoryColor & 0xFF;
         int color = (a << 24) | (r << 16) | (g << 8) | b;
         int shadow = ((int) (a * 0.5f) << 24); // transparent black shadow
 
@@ -135,15 +137,60 @@ public class SoundIndicatorRenderer implements HudRenderCallback {
         float halfSpan = spanSize * 2.5f;
         float startA = angleDeg - halfSpan;
         float endA = angleDeg + halfSpan;
-        int segments = 14;
+        int segments = 24; // Increased for smoothness
         int t = Math.max(1, strokeW);
 
         for (int i = 0; i < segments; i++) {
-            float a = startA + (endA - startA) * (i / (float) segments);
-            double rad = Math.toRadians(a);
-            int px = (int) (cx + Math.sin(rad) * radius) + offset;
-            int py = (int) (cy - Math.cos(rad) * radius) + offset;
-            ctx.fill(px - t, py - t, px + t, py + t, color);
+            float f1 = (float) i / segments;
+            float f2 = (float) (i + 1) / segments;
+            double a1 = Math.toRadians(startA + (endA - startA) * f1);
+            double a2 = Math.toRadians(startA + (endA - startA) * f2);
+
+            int x1 = (int) (cx + Math.sin(a1) * (radius + offset));
+            int y1 = (int) (cy - Math.cos(a1) * (radius + offset));
+            int x2 = (int) (cx + Math.sin(a2) * (radius + offset));
+            int y2 = (int) (cy - Math.cos(a2) * (radius + offset));
+
+            // Use thin lines/rects to build the arc
+            drawLine(ctx, x1, y1, x2, y2, t, color);
+        }
+    }
+
+    private void drawLine(DrawContext ctx, int x1, int y1, int x2, int y2, int thickness, int color) {
+        if (thickness <= 1) {
+            ctx.fill(x1, y1, x2 + 1, y2 + 1, color);
+            return;
+        }
+        int dx = x2 - x1;
+        int dy = y2 - y1;
+        double dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 0.1)
+            return;
+
+        double ux = dx / dist;
+        double uy = dy / dist;
+        double nx = -uy * (thickness / 2.0);
+        double ny = ux * (thickness / 2.0);
+
+        // Simple approximation with 4 fills for better coverage
+        ctx.fill((int) (x1 + nx), (int) (y1 + ny), (int) (x2 + nx) + 1, (int) (y2 + ny) + 1, color);
+    }
+
+    private int getCategoryColor(SoundCategory category, SoundVisualizerConfig config) {
+        switch (category) {
+            case HOSTILE:
+                return config.colorHostile;
+            case FRIENDLY:
+                return config.colorFriendly;
+            case AMBIENT:
+                return config.colorAmbient;
+            case BLOCKS:
+                return config.colorBlocks;
+            case PLAYER:
+                return config.colorPlayer;
+            case NEUTRAL:
+            default:
+                return config.colorNeutral;
         }
     }
 

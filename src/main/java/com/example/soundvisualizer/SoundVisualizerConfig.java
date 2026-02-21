@@ -18,6 +18,12 @@ public class SoundVisualizerConfig {
     public static final SoundVisualizerConfig INSTANCE = new SoundVisualizerConfig();
 
     public int indicatorColor = 0xFF0000;
+    public int colorHostile = SoundCategory.HOSTILE.getDefaultColor();
+    public int colorFriendly = SoundCategory.FRIENDLY.getDefaultColor();
+    public int colorAmbient = SoundCategory.AMBIENT.getDefaultColor();
+    public int colorBlocks = SoundCategory.BLOCKS.getDefaultColor();
+    public int colorPlayer = SoundCategory.PLAYER.getDefaultColor();
+    public int colorNeutral = SoundCategory.NEUTRAL.getDefaultColor();
     public float indicatorSize = 4.0f;
     public int indicatorWidth = 3; // NEW: Stroke width for ARCH / CHEVRON
     public float iconSize = 4.0f;
@@ -78,6 +84,18 @@ public class SoundVisualizerConfig {
             props.load(Files.newInputStream(configPath));
 
             indicatorColor = parseColor(props.getProperty("indicatorColor", "FF0000"), 0xFF0000);
+            colorHostile = parseColor(props.getProperty("colorHostile", "FF0000"),
+                    SoundCategory.HOSTILE.getDefaultColor());
+            colorFriendly = parseColor(props.getProperty("colorFriendly", "00FF00"),
+                    SoundCategory.FRIENDLY.getDefaultColor());
+            colorAmbient = parseColor(props.getProperty("colorAmbient", "00FFFF"),
+                    SoundCategory.AMBIENT.getDefaultColor());
+            colorBlocks = parseColor(props.getProperty("colorBlocks", "FFFF00"),
+                    SoundCategory.BLOCKS.getDefaultColor());
+            colorPlayer = parseColor(props.getProperty("colorPlayer", "FFFFFF"),
+                    SoundCategory.PLAYER.getDefaultColor());
+            colorNeutral = parseColor(props.getProperty("colorNeutral", "AAAAAA"),
+                    SoundCategory.NEUTRAL.getDefaultColor());
             indicatorSize = Float.parseFloat(props.getProperty("indicatorSize", "4.0"));
             indicatorWidth = Integer.parseInt(props.getProperty("indicatorWidth", "3"));
             iconSize = Float.parseFloat(props.getProperty("iconSize", "4.0"));
@@ -100,6 +118,12 @@ public class SoundVisualizerConfig {
         try {
             Properties props = new Properties();
             props.setProperty("indicatorColor", String.format("%06X", indicatorColor & 0xFFFFFF));
+            props.setProperty("colorHostile", String.format("%06X", colorHostile & 0xFFFFFF));
+            props.setProperty("colorFriendly", String.format("%06X", colorFriendly & 0xFFFFFF));
+            props.setProperty("colorAmbient", String.format("%06X", colorAmbient & 0xFFFFFF));
+            props.setProperty("colorBlocks", String.format("%06X", colorBlocks & 0xFFFFFF));
+            props.setProperty("colorPlayer", String.format("%06X", colorPlayer & 0xFFFFFF));
+            props.setProperty("colorNeutral", String.format("%06X", colorNeutral & 0xFFFFFF));
             props.setProperty("indicatorSize", String.valueOf(indicatorSize));
             props.setProperty("indicatorWidth", String.valueOf(indicatorWidth));
             props.setProperty("iconSize", String.valueOf(iconSize));

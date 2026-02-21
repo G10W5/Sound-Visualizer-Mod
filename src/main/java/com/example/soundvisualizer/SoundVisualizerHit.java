@@ -4,18 +4,20 @@ public class SoundVisualizerHit {
     public final net.minecraft.util.Identifier soundId;
     public final net.minecraft.util.math.Vec3d position;
     public final net.minecraft.text.Text subtitle;
+    public final SoundCategory category;
     public final float range;
     public final float volume;
     public final long startTime;
     public float alpha = 1.0f;
 
     public SoundVisualizerHit(net.minecraft.util.Identifier soundId, net.minecraft.util.math.Vec3d position,
-            net.minecraft.text.Text subtitle, float range, float volume) {
+            net.minecraft.text.Text subtitle, float range, float volume, SoundCategory category) {
         this.soundId = soundId;
         this.position = position;
         this.subtitle = subtitle;
         this.range = range;
         this.volume = volume;
+        this.category = category;
         this.startTime = System.currentTimeMillis();
     }
 

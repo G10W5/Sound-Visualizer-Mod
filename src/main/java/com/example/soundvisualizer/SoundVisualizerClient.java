@@ -15,7 +15,7 @@ public class SoundVisualizerClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        LOGGER.info("Sound Visualizer initialized! [Version 1.3.0]");
+        LOGGER.info("Sound Visualizer initialized! [Version 1.3.1]");
         HudRenderCallback.EVENT.register(RENDERER);
     }
 
@@ -127,11 +127,71 @@ public class SoundVisualizerClient implements ClientModInitializer {
             }
 
             // PUSH TO THE CENTRAL VAULT
+            SoundCategory category = determineCategory(id, soundInstance, client);
             HITS.add(new SoundVisualizerHit(id, new net.minecraft.util.math.Vec3d(x, y, z), null, (float) hearingRange,
-                    vol));
+                    vol, category));
 
         } catch (Throwable t) {
             // SILENT FAIL
         }
+    }
+
+    private static SoundCategory determineCategory(net.minecraft.util.Identifier id,
+            net.minecraft.client.sound.SoundInstance sound, net.minecraft.client.MinecraftClient client) {
+        String path = id.getPath();
+
+        if (path.contains(".zombie") || path.contains(".skeleton") || path.contains(".creeper") ||
+                path.contains(".spider") || path.contains(".enderman") || path.contains(".witch") ||
+                path.contains(".ghast") || path.contains(".blaze") || path.contains(".slime") ||
+                path.contains(".magma_cube") || path.contains(".wither") || path.contains(".ender_dragon") ||
+                path.contains(".pillager") || path.contains(".ravager") || path.contains(".evoker") ||
+                path.contains(".vindicator") || path.contains(".shulker") || path.contains(".guardian") ||
+                path.contains(".elder_guardian") || path.contains(".hoglin") || path.contains(".piglin") ||
+                path.contains(".zoglin") || path.contains(".warden") || path.contains(".breeze")) {
+            return SoundCategory.HOSTILE;
+        }
+
+        if (path.contains(".cow") || path.contains(".pig") || path.contains(".sheep") ||
+                path.contains(".chicken") || path.contains(".rabbit") || path.contains(".horse") ||
+                path.contains(".donkey") || path.contains(".mule") || path.contains(".llama") ||
+                path.contains(".trader_llama") || path.contains(".villager") || path.contains(".wandering_trader") ||
+                path.contains(".bee") || path.contains(".fox") || path.contains(".cat") ||
+                path.contains(".wolf") || path.contains(".parrot") || path.contains(".panda") ||
+                path.contains(".polar_bear") || path.contains(".strider") || path.contains(".axolotl") ||
+                path.contains(".glow_squid") || path.contains(".goat") || path.contains(".frog") ||
+                path.contains(".tadpole") || path.contains(".camel") || path.contains(".sniffer") ||
+                path.contains(".armadillo")) {
+            return SoundCategory.FRIENDLY;
+        }
+
+        if (path.contains("block.")) {
+            return SoundCategory.BLOCKS;
+        }
+
+        if (path.contains("ambient.")) {
+            return SoundCategory.AMBIENT;
+        }
+
+        if (path.contains("entity.player.")) {
+            return SoundCategory.PLAYER;
+        }
+
+        // Default based on sound source if possible (some sound instances have it)
+        try {
+            net.minecraft.sound.SoundCategory mcCat = sound.getCategory();
+            if (mcCat == net.minecraft.sound.SoundCategory.HOSTILE)
+                return SoundCategory.HOSTILE;
+            if (mcCat == net.minecraft.sound.SoundCategory.NEUTRAL)
+                return SoundCategory.NEUTRAL;
+            if (mcCat == net.minecraft.sound.SoundCategory.PLAYERS)
+                return SoundCategory.PLAYER;
+            if (mcCat == net.minecraft.sound.SoundCategory.BLOCKS)
+                return SoundCategory.BLOCKS;
+            if (mcCat == net.minecraft.sound.SoundCategory.AMBIENT)
+                return SoundCategory.AMBIENT;
+        } catch (Throwable ignored) {
+        }
+
+        return SoundCategory.NEUTRAL;
     }
 }
