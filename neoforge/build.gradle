@@ -1,0 +1,54 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.140'
+}
+
+neoForge {
+    version = "21.11.38-beta"
+
+    runs {
+        client {
+            client()
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+    }
+
+    mods {
+        "${project.mod_id}" {
+            sourceSet sourceSets.main
+            sourceSet project(":common").sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    implementation project(":common")
+    implementation "me.shedaniel.cloth:cloth-config-neoforge:21.11.153"
+}
+
+processResources {
+    from project(":common").sourceSets.main.resources
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : rootProject.minecraft_version,
+            minecraft_version_range: "[1.21.1,)",
+            neo_version            : "21.11.38-beta",
+            mod_id                 : project.mod_id,
+            mod_name               : "Sound Visualizer",
+            mod_license            : "MIT",
+            mod_version            : project.version,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+jar {
+    from project(":common").sourceSets.main.output
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

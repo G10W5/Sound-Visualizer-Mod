@@ -4,8 +4,14 @@ pluginManagement {
             name = 'Fabric'
             url = 'https://maven.fabricmc.net/'
         }
+        maven { url "https://maven.neoforged.net/releases/" }
+        mavenCentral()
         gradlePluginPortal()
     }
 }
 
-rootProject.name = 'soundvisualizer'
+rootProject.name = 'SoundVisualizerMod'
+
+include 'common'
+include 'fabric'
+include 'neoforge'

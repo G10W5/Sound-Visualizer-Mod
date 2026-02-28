@@ -1,0 +1,25 @@
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+description="HUD indicators for sound directions."
+authors="LorenPC"
+
+[[mixins]]
+config="soundvisualizer.mixins.json"
+
+[[dependencies.soundvisualizer]]
+    modId="neoforge"
+    type="required"
+    versionRange="[21,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.soundvisualizer]]
+    modId="minecraft"
+    type="required"
+    versionRange="[1.21.11,)"
+    ordering="NONE"
+    side="BOTH"
