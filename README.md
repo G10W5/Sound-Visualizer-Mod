@@ -39,10 +39,13 @@ Full support for Mod Menu and Cloth Config, allowing you to tune:
 ---
 
 ## Requirements
+### Fabric
 *   **Fabric Loader** (1.21.1+)
 *   **Fabric API**
 *   **Cloth Config API**
 *   **Mod Menu** (Recommended for settings)
+### Neoforge
+*   **Latest Neoforge build** (beta)
 
 ---
 
