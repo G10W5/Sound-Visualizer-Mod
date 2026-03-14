@@ -6,7 +6,7 @@
     "description": "HUD indicators for sound directions.",
     "icon": "icon.png",
     "authors": [
-        "LorenPC"
+        "G10W5"
     ],
     "contact": {
         "homepage": "https://fabricmc.net/",
@@ -29,7 +29,9 @@
         "fabricloader": ">=${loader_version}",
         "minecraft": ">=1.21.8",
         "java": ">=21",
-        "fabric-api": "*"
+        "fabric-api": "*",
+        "architectury": ">=13.0.0",
+        "cloth-config2": ">=13.0.0"
     },
     "suggests": {
         "another-mod": "*"

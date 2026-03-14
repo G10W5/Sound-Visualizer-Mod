@@ -1,50 +1,45 @@
 # Sound Visualizer
 
-**Never miss a sound again.** Sound Visualizer is a client-side tactical mod for Minecraft that translates in-game audio into intuitive HUD indicators. Whether you're navigating deep caves or engaged in intense PvP, this mod provides the situational awareness you need across all 1.21.x versions.
+**Never miss a sound again.** Sound Visualizer is a premium tactical mod for Minecraft that translates in-game audio into intuitive, high-fidelity HUD indicators. Optimized for both **Fabric** and **NeoForge**, it provides unparalleled situational awareness for Minecraft versions **1.21.8 through 1.21.11**.
 
 ---
 
-## Key Features
+## ✨ Premium Features
 
-### Dual-Style Indicators
-Choose the aesthetic that fits your playstyle:
-*   **Chevron (Classic)**: Bold, pointed indicators for maximum visibility.
-*   **Arc (Modern)**: Smooth, mathematically curved arcs for a sleek HUD.
+### 🌈 Smart Sound Categorization
+The mod automatically identifies and categorizes sounds to provide instant tactical recognition:
+*   **Hostile (Red)**: Zombie groans, creeper hisses, and other threats.
+*   **Friendly (Green)**: Villagers, passive mobs, and pets.
+*   **Footsteps (White)**: Precise movement tracking for nearby entities.
+*   **Blocks (Yellow)**: Nearby mining, block placement, or piston activity.
+*   **Player (Blue)**: Tracking other players in your vicinity.
+*   **Ambient (Cyan)**: Environment sounds and music.
 
-### Tactical Awareness
-*   **Directional Accuracy**: Instantly see which direction a sound is coming from.
-*   **Intelligent Icon System**: Automatically displays relevant icons (e.g., Zombie heads, Sword for hits, Boots for steps). 
-*   **Note Glyph Fallback**: Unknown sounds now use a clean musical note symbol instead of generic blocks.
-*   **Configurable Hearing Distance**: Set a custom "Max Hearing Distance" (default 16 blocks) to filter out irrelevant background noise while keeping nearby action visible.
+### 🛡️ Anti-Spam Sound Merging
+Tired of HUD clutter? Our intelligent merging engine groups sounds of the same category and direction into a single, clean indicator. When a new sound merges, the HUD pulse provides subtle feedback without the distracting "indicator spam."
+
+### 🎨 Visual Excellence
+*   **Mathematical Arcs**: Smooth, 2D-transformed arcs that stay perfectly oriented.
+*   **Multi-Platform Configuration**: Full integration with **Cloth Config** on both Fabric and NeoForge.
 *   **Distance Scaling**: Indicators grow and fade naturally based on proximity.
-
-### Intelligent Filtering
-*   **Local Footstep Suppression**: Automatically ignores your own movement sounds.
-*   **Mining Sound Detection**: Special handling for block breaking and hitting to ensure you never miss nearby mining activity.
-*   **Ghost Detection Engine**: Robust, crash-proof architecture compatible with complex modpacks and multiple Minecraft versions (1.21.1 to 1.21.11+).
-
-### Complete Customization
-Full support for Mod Menu and Cloth Config, allowing you to tune:
-*   **Indicator Color**: Custom HEX support with a built-in color picker.
-*   **Granular Layout**: Independent sliders for Icon Size, Icon Offset, Indicator Size, Indicator Width, and Radius.
-*   **Fade Timing**: Control exactly how long sound hits linger on your screen.
+*   **Glow-Free Performance**: Optimized for maximum visibility without "ghosting" artifacts or FPS drops.
 
 ---
 
-## Performance
-*   **Client-Side Only**: Works on any server without local installation required.
-*   **Optimized Rendering**: Minimal impact on FPS using modern Fabric rendering APIs.
-*   **Clean Logs**: Production-ready performance with zero console spam.
+## 🚀 Performance
+*   **Architectury Powered**: Built on a robust cross-platform engine for maximum stability.
+*   **Client-Side Only**: Works perfectly on any server; no server-side installation required.
+*   **Mathematical Precision**: Uses modern `Matrix3x2f` transformations for perfectly centered HUD elements.
 
 ---
 
-## Requirements
-*   **Fabric Loader** (1.21.1+)
-*   **Fabric API**
+## 🛠️ Requirements
+*   **Fabric** or **NeoForge** (1.21.8 - 1.21.11)
+*   **Architectury API**
 *   **Cloth Config API**
-*   **Mod Menu** (Recommended for settings)
+*   **Mod Menu** (Recommended for Fabric)
 
 ---
 
-## License
-Licensed under the **MIT License** — Free to use in any modpack.
+## 📄 License
+Licensed under the **MIT License** — Free to use in any modpack. Developed with ❤️ by **G10W5**.

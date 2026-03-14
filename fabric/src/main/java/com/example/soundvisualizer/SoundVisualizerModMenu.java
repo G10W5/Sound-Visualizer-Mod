@@ -6,6 +6,6 @@ import com.terraformersmc.modmenu.api.ModMenuApi;
 public class SoundVisualizerModMenu implements ModMenuApi {
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
-        return SoundVisualizerConfigScreen::create;
+        return parent -> SoundVisualizerConfigScreen.create(parent);
     }
 }

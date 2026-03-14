@@ -1,9 +1,16 @@
 plugins {
-    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'dev.architectury.loom'
+    id 'architectury-plugin'
+}
+
+architectury {
+    common("fabric", "neoforge")
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
+    modApi "dev.architectury:architectury:${rootProject.architectury_api_version}"
+    modApi "me.shedaniel.cloth:cloth-config:21.11.153"
 }

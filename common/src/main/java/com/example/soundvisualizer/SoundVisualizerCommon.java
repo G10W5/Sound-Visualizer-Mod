@@ -4,6 +4,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.client.resources.sounds.SoundInstance;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.slf4j.Logger;
@@ -22,18 +24,11 @@ public class SoundVisualizerCommon {
         double y = soundInstance.getY();
         double z = soundInstance.getZ();
 
-        // Exclude sounds played at the player's exact location (own footsteps, own
-        // eating, etc.)
-        // We allow footstep sounds from very close to the player if they are NOT at 0,0
-        // pos
-        // Only skip if within 0.5 blocks AND it's a footstep-type sound
         String soundPath = soundInstance.getIdentifier() == null ? "" : soundInstance.getIdentifier().getPath();
         boolean isFootstep = soundPath.contains(".step") || soundPath.contains("footstep");
         if (isFootstep && client.player.distanceToSqr(x, y, z) < 1.0) {
             return; // Skip own footsteps
         }
-        // Exclude very exactly on-player sounds (at position 0,0,0 or exactly at
-        // player)
         if (!isFootstep && x == 0 && y == 0 && z == 0) {
             return;
         }
@@ -48,21 +43,43 @@ public class SoundVisualizerCommon {
         float vol = 1.0f;
         try {
             vol = soundInstance.getVolume();
-        } catch (Exception e) {
-            // Sound might not be resolved yet (field_5444 is null in AbstractSoundInstance)
-            // We use the base volume if possible, or 1.0f
-        }
+        } catch (Exception e) {}
 
         SoundCategory category = determineCategory(id, soundInstance, client);
-        HITS.add(new SoundVisualizerHit(id, new Vec3(x, y, z), null, hearingRange, vol, category));
+        
+        // Merging Logic
+        double angleToNewSound = getAngleToSound(client, x, z);
+        for (SoundVisualizerHit hit : HITS) {
+            if (hit.category == category && !hit.isExpired()) {
+                double hitAngle = getAngleToSound(client, hit.position.x, hit.position.z);
+                double diff = Math.abs(Mth.wrapDegrees(angleToNewSound - hitAngle));
+                
+                if (diff < 15.0) {
+                    hit.refresh(new Vec3(x, y, z), vol);
+                    return;
+                }
+            }
+        }
+
+        if (HITS.size() < 12) {
+            HITS.add(new SoundVisualizerHit(id, new Vec3(x, y, z), null, hearingRange, vol, category));
+        }
+    }
+
+    private static double getAngleToSound(Minecraft client, double x, double z) {
+        double dx = x - client.player.getX();
+        double dz = z - client.player.getZ();
+        return Mth.atan2(dz, dx) * (180.0 / Math.PI) - 90.0;
     }
 
     private static SoundCategory determineCategory(Identifier id, SoundInstance sound, Minecraft client) {
         String p = id.getPath();
+        if (p.contains(".step") || p.contains("footstep")) {
+            return SoundCategory.NEUTRAL; // FOOTSTEPS
+        }
         if (p.contains("entity.zombie") || p.contains("entity.creeper") || p.contains("entity.skeleton") ||
                 p.contains("entity.spider") || p.contains("entity.enderman") || p.contains("entity.ghast") ||
-                p.contains("entity.blaze") || p.contains("entity.warden") || p.contains("entity.breeze") ||
-                p.contains("entity.hostile")) {
+                p.contains("entity.blaze") || p.contains("entity.warden") || p.contains("entity.hostile")) {
             return SoundCategory.HOSTILE;
         }
         if (p.contains("entity.pig") || p.contains("entity.cow") || p.contains("entity.chicken") ||
@@ -79,20 +96,13 @@ public class SoundVisualizerCommon {
             return SoundCategory.PLAYER;
         }
 
-        // Fallback to Minecraft Sound Category
-        switch (sound.getSource()) {
-            case HOSTILE:
-                return SoundCategory.HOSTILE;
-            case NEUTRAL:
-                return SoundCategory.FRIENDLY;
-            case AMBIENT:
-                return SoundCategory.AMBIENT;
-            case BLOCKS:
-                return SoundCategory.BLOCKS;
-            case PLAYERS:
-                return SoundCategory.PLAYER;
-            default:
-                return SoundCategory.NEUTRAL;
-        }
+        SoundSource source = sound.getSource();
+        if (source == SoundSource.HOSTILE) return SoundCategory.HOSTILE;
+        if (source == SoundSource.NEUTRAL) return SoundCategory.FRIENDLY;
+        if (source == SoundSource.AMBIENT) return SoundCategory.AMBIENT;
+        if (source == SoundSource.BLOCKS) return SoundCategory.BLOCKS;
+        if (source == SoundSource.PLAYERS) return SoundCategory.PLAYER;
+        
+        return SoundCategory.NEUTRAL;
     }
 }

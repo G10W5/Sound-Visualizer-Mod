@@ -1,0 +1,32 @@
+license="MIT"
+
+[[mods]]
+modId="soundvisualizer"
+version="${version}"
+displayName="Sound Visualizer"
+description="HUD indicators for sound directions."
+authors="G10W5"
+
+[[mixins]]
+config="soundvisualizer.mixins.json"
+
+[[dependencies.soundvisualizer]]
+    modId="minecraft"
+    type="required"
+    versionRange="[1.21.8,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.soundvisualizer]]
+    modId="architectury"
+    type="required"
+    versionRange="[13.0.0,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.soundvisualizer]]
+    modId="cloth_config"
+    type="required"
+    versionRange="[13.0.0,)"
+    ordering="NONE"
+    side="BOTH"
