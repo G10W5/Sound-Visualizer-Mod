@@ -7,6 +7,7 @@
     "option.soundvisualizer.distanceScaling": "Scale by Distance",
     "option.soundvisualizer.showIcons": "Show Item Icons",
     "option.soundvisualizer.iconScale": "Icon Scale",
+    "option.soundvisualizer.transparency": "Transparency",
     "option.soundvisualizer.maxHearingDistance": "Max Hearing Distance",
     "category.soundvisualizer.colors": "Category Colors",
     "option.soundvisualizer.colorHostile": "Hostile Mobs",
