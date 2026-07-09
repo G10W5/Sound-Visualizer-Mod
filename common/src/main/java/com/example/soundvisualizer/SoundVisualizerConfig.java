@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -26,7 +28,6 @@ public class SoundVisualizerConfig {
     public double radius = 50.0;
     public float fadeTimeSeconds = 2.0f;
     
-    // New Arc settings
     public float arcThickness = 32.0f;
     public float arcSpanDegrees = 30.0f;
     public float iconScale = 1.0f;
@@ -45,6 +46,11 @@ public class SoundVisualizerConfig {
 
     public void init(Path configPath) {
         this.configPath = configPath;
+        try {
+            Files.createDirectories(configPath.getParent());
+        } catch (IOException e) {
+            LOGGER.error("Failed to create config directory", e);
+        }
         load();
     }
 
@@ -75,14 +81,18 @@ public class SoundVisualizerConfig {
     }
 
     public void load() {
-        if (configPath == null || !Files.exists(configPath)) {
-            if (configPath != null)
-                save();
+        if (configPath == null) {
+            LOGGER.warn("Config path not set, using defaults");
             return;
         }
-        try {
+        if (!Files.exists(configPath)) {
+            LOGGER.info("Config file not found, saving defaults");
+            save();
+            return;
+        }
+        try (InputStream in = Files.newInputStream(configPath)) {
             Properties props = new Properties();
-            props.load(Files.newInputStream(configPath));
+            props.load(in);
 
             colorHostile = parseColor(props.getProperty("colorHostile", "FF0000"), SoundCategory.HOSTILE.getDefaultColor());
             colorFriendly = parseColor(props.getProperty("colorFriendly", "00FF00"), SoundCategory.FRIENDLY.getDefaultColor());
@@ -104,15 +114,19 @@ public class SoundVisualizerConfig {
             distanceScaling = Boolean.parseBoolean(props.getProperty("distanceScaling", "true"));
             maxHearingDistance = Float.parseFloat(props.getProperty("maxHearingDistance", "16.0"));
             transparency = Float.parseFloat(props.getProperty("transparency", "1.0"));
+            LOGGER.info("Config loaded successfully");
         } catch (Exception e) {
-            LOGGER.error("Failed to load config", e);
+            LOGGER.error("Failed to load config, using defaults", e);
         }
     }
 
     public void save() {
-        if (configPath == null)
+        if (configPath == null) {
+            LOGGER.warn("Config path not set, cannot save");
             return;
+        }
         try {
+            Files.createDirectories(configPath.getParent());
             Properties props = new Properties();
             props.setProperty("colorHostile", String.format("%06X", colorHostile & 0xFFFFFF));
             props.setProperty("colorFriendly", String.format("%06X", colorFriendly & 0xFFFFFF));
@@ -135,7 +149,10 @@ public class SoundVisualizerConfig {
             props.setProperty("maxHearingDistance", String.valueOf(maxHearingDistance));
             props.setProperty("transparency", String.valueOf(transparency));
             
-            props.store(Files.newOutputStream(configPath), "Sound Visualizer Configuration v2.0");
+            try (OutputStream out = Files.newOutputStream(configPath)) {
+                props.store(out, "Sound Visualizer Configuration");
+            }
+            LOGGER.info("Config saved to {}", configPath);
         } catch (IOException e) {
             LOGGER.error("Failed to save config", e);
         }
