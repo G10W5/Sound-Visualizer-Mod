@@ -73,11 +73,11 @@ Settings are saved to `config/soundvisualizer.properties` and persist across res
 
 ## Changelog
 
-### 2.1.1
+### 2.1.0-beta.1
 - Added Transparency slider (0-100%) to reduce indicator visibility
 - Fixed config not persisting across restarts
 
-### 2.1.0
+### 2.1.0-beta
 - Updated to Minecraft 26.1.2 and Java 25
 - Updated Architectury API, Fabric API, NeoForge, Cloth Config, and Mod Menu
 - Migrated Shadow plugin for Gradle 9.x compatibility
@@ -96,4 +96,4 @@ Settings are saved to `config/soundvisualizer.properties` and persist across res
 
 MIT License — free to use in any modpack.
 
-Developed by **G10W5**.
+Developed with ❤️ by **G10W5**.
