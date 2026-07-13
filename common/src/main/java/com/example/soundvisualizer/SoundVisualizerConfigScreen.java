@@ -65,35 +65,22 @@ public class SoundVisualizerConfigScreen {
         ConfigCategory colors = builder.getOrCreateCategory(
                 Component.translatable("category.soundvisualizer.colors"));
 
-        colors.addEntry(eb.startColorField(Component.translatable("option.soundvisualizer.colorHostile"), config.colorHostile & 0xFFFFFF)
-                .setDefaultValue(SoundCategory.HOSTILE.getDefaultColor() & 0xFFFFFF)
-                .setSaveConsumer(val -> config.colorHostile = val & 0xFFFFFF)
-                .build());
-
-        colors.addEntry(eb.startColorField(Component.translatable("option.soundvisualizer.colorFriendly"), config.colorFriendly & 0xFFFFFF)
-                .setDefaultValue(SoundCategory.FRIENDLY.getDefaultColor() & 0xFFFFFF)
-                .setSaveConsumer(val -> config.colorFriendly = val & 0xFFFFFF)
-                .build());
-
-        colors.addEntry(eb.startColorField(Component.translatable("option.soundvisualizer.colorAmbient"), config.colorAmbient & 0xFFFFFF)
-                .setDefaultValue(SoundCategory.AMBIENT.getDefaultColor() & 0xFFFFFF)
-                .setSaveConsumer(val -> config.colorAmbient = val & 0xFFFFFF)
-                .build());
-
-        colors.addEntry(eb.startColorField(Component.translatable("option.soundvisualizer.colorBlocks"), config.colorBlocks & 0xFFFFFF)
-                .setDefaultValue(SoundCategory.BLOCKS.getDefaultColor() & 0xFFFFFF)
-                .setSaveConsumer(val -> config.colorBlocks = val & 0xFFFFFF)
-                .build());
-
-        colors.addEntry(eb.startColorField(Component.translatable("option.soundvisualizer.colorPlayer"), config.colorPlayer & 0xFFFFFF)
-                .setDefaultValue(SoundCategory.PLAYER.getDefaultColor() & 0xFFFFFF)
-                .setSaveConsumer(val -> config.colorPlayer = val & 0xFFFFFF)
-                .build());
-
-        colors.addEntry(eb.startColorField(Component.translatable("option.soundvisualizer.colorNeutral"), config.colorNeutral & 0xFFFFFF)
-                .setDefaultValue(SoundCategory.NEUTRAL.getDefaultColor() & 0xFFFFFF)
-                .setSaveConsumer(val -> config.colorNeutral = val & 0xFFFFFF)
-                .build());
+        for (SoundCategory cat : SoundCategory.values()) {
+            int colorVal = getCatColor(config, cat);
+            colors.addEntry(eb.startBooleanToggle(
+                    Component.translatable("option.soundvisualizer.enable" + cat.getName()), !config.disabledCategories.contains(cat))
+                    .setDefaultValue(true)
+                    .setSaveConsumer(val -> {
+                        if (val) config.disabledCategories.remove(cat);
+                        else config.disabledCategories.add(cat);
+                    })
+                    .build());
+            colors.addEntry(eb.startColorField(
+                    Component.translatable("option.soundvisualizer.color" + cat.getName()), colorVal & 0xFFFFFF)
+                    .setDefaultValue(cat.getDefaultColor() & 0xFFFFFF)
+                    .setSaveConsumer(val -> setCatColor(config, cat, val & 0xFFFFFF))
+                    .build());
+        }
 
         // Filters
         ConfigCategory filters = builder.getOrCreateCategory(
@@ -111,5 +98,27 @@ public class SoundVisualizerConfigScreen {
 
         builder.setSavingRunnable(config::save);
         return builder.build();
+    }
+
+    private static int getCatColor(SoundVisualizerConfig config, SoundCategory cat) {
+        return switch (cat) {
+            case HOSTILE -> config.colorHostile;
+            case FRIENDLY -> config.colorFriendly;
+            case AMBIENT -> config.colorAmbient;
+            case BLOCKS -> config.colorBlocks;
+            case PLAYER -> config.colorPlayer;
+            case NEUTRAL -> config.colorNeutral;
+        };
+    }
+
+    private static void setCatColor(SoundVisualizerConfig config, SoundCategory cat, int color) {
+        switch (cat) {
+            case HOSTILE -> config.colorHostile = color;
+            case FRIENDLY -> config.colorFriendly = color;
+            case AMBIENT -> config.colorAmbient = color;
+            case BLOCKS -> config.colorBlocks = color;
+            case PLAYER -> config.colorPlayer = color;
+            case NEUTRAL -> config.colorNeutral = color;
+        }
     }
 }

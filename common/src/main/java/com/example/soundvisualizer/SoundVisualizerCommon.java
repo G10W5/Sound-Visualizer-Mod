@@ -73,10 +73,15 @@ public class SoundVisualizerCommon {
     }
 
     private static SoundCategory determineCategory(Identifier id, SoundInstance sound, Minecraft client) {
+        String ns = id.getNamespace();
         String p = id.getPath();
-        if (p.contains(".step") || p.contains("footstep")) {
-            return SoundCategory.NEUTRAL; // FOOTSTEPS
+
+        // Footstep detection — vanilla + modded (Presence Footsteps, etc.)
+        if (p.contains(".step") || p.contains("footstep") || p.startsWith("step.") ||
+                ns.equals("presence_footsteps") || p.startsWith("pf/")) {
+            return SoundCategory.NEUTRAL;
         }
+
         if (p.contains("entity.zombie") || p.contains("entity.creeper") || p.contains("entity.skeleton") ||
                 p.contains("entity.spider") || p.contains("entity.enderman") || p.contains("entity.ghast") ||
                 p.contains("entity.blaze") || p.contains("entity.warden") || p.contains("entity.hostile")) {
@@ -89,16 +94,16 @@ public class SoundVisualizerCommon {
         if (p.contains("ambient.") || p.contains("music.")) {
             return SoundCategory.AMBIENT;
         }
-        if (p.contains("block.")) {
-            return SoundCategory.BLOCKS;
-        }
         if (p.contains("entity.player")) {
             return SoundCategory.PLAYER;
+        }
+        if (p.contains("block.")) {
+            return SoundCategory.BLOCKS;
         }
 
         SoundSource source = sound.getSource();
         if (source == SoundSource.HOSTILE) return SoundCategory.HOSTILE;
-        if (source == SoundSource.NEUTRAL) return SoundCategory.FRIENDLY;
+        if (source == SoundSource.NEUTRAL) return SoundCategory.NEUTRAL;
         if (source == SoundSource.AMBIENT) return SoundCategory.AMBIENT;
         if (source == SoundSource.BLOCKS) return SoundCategory.BLOCKS;
         if (source == SoundSource.PLAYERS) return SoundCategory.PLAYER;

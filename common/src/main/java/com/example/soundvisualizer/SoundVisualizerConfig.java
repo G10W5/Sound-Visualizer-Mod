@@ -10,8 +10,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SoundVisualizerConfig {
@@ -38,6 +40,7 @@ public class SoundVisualizerConfig {
     public boolean distanceScaling = true;
     public float maxHearingDistance = 16.0f;
     public float opacity = 1.0f;
+    public Set<SoundCategory> disabledCategories = EnumSet.noneOf(SoundCategory.class);
 
     private Path configPath;
 
@@ -80,6 +83,25 @@ public class SoundVisualizerConfig {
         return String.join(",", list);
     }
 
+    private static Set<SoundCategory> parseDisabledCategories(String raw) {
+        Set<SoundCategory> disabled = EnumSet.noneOf(SoundCategory.class);
+        if (raw == null || raw.isBlank()) return disabled;
+        for (String s : raw.split(",")) {
+            String trimmed = s.trim().toUpperCase();
+            if (!trimmed.isEmpty()) {
+                try {
+                    disabled.add(SoundCategory.valueOf(trimmed));
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        return disabled;
+    }
+
+    private static String disabledCategoriesToString(Set<SoundCategory> set) {
+        if (set == null || set.isEmpty()) return "";
+        return set.stream().map(Enum::name).collect(Collectors.joining(","));
+    }
+
     public void load() {
         if (configPath == null) {
             LOGGER.warn("Config path not set, using defaults");
@@ -114,6 +136,7 @@ public class SoundVisualizerConfig {
             distanceScaling = Boolean.parseBoolean(props.getProperty("distanceScaling", "true"));
             maxHearingDistance = Float.parseFloat(props.getProperty("maxHearingDistance", "16.0"));
             opacity = Float.parseFloat(props.getProperty("opacity", props.getProperty("transparency", "1.0")));
+            disabledCategories = parseDisabledCategories(props.getProperty("disabledCategories", ""));
             LOGGER.info("Config loaded successfully");
         } catch (Exception e) {
             LOGGER.error("Failed to load config, using defaults", e);
@@ -148,6 +171,7 @@ public class SoundVisualizerConfig {
             props.setProperty("distanceScaling", String.valueOf(distanceScaling));
             props.setProperty("maxHearingDistance", String.valueOf(maxHearingDistance));
             props.setProperty("opacity", String.valueOf(opacity));
+            props.setProperty("disabledCategories", disabledCategoriesToString(disabledCategories));
             
             try (OutputStream out = Files.newOutputStream(configPath)) {
                 props.store(out, "Sound Visualizer Configuration");

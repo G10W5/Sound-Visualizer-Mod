@@ -25,6 +25,9 @@ public class SoundIndicatorRenderer {
                 SoundVisualizerCommon.HITS.remove(hit);
                 continue;
             }
+            if (SoundVisualizerConfig.INSTANCE.disabledCategories.contains(hit.category)) {
+                continue;
+            }
             renderSoundIndicator(ctx, hit, alpha, delta);
         }
     }

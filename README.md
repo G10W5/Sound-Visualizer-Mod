@@ -73,6 +73,11 @@ Settings are saved to `config/soundvisualizer.properties` and persist across res
 
 ## Changelog
 
+### 2.2.0
+- Added category enable/disable toggles — hide categories you don't want to see
+- Improved Presence Footsteps compatibility — footsteps now correctly show neutral icons
+- Fixed SoundSource.NEUTRAL being misclassified as Friendly
+
 ### 2.1.0-beta.2
 - Fixed config not loading on NeoForge (settings now persist across restarts)
 - Renamed Transparency to Opacity for clarity
