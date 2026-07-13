@@ -56,9 +56,9 @@ public class SoundVisualizerConfigScreen {
                 .setSaveConsumer(val -> config.iconScale = val / 10.0f)
                 .build());
 
-        general.addEntry(eb.startIntSlider(Component.translatable("option.soundvisualizer.transparency"), (int) (config.transparency * 100), 0, 100)
+        general.addEntry(eb.startIntSlider(Component.translatable("option.soundvisualizer.opacity"), (int) (config.opacity * 100), 0, 100)
                 .setDefaultValue(100)
-                .setSaveConsumer(val -> config.transparency = val / 100.0f)
+                .setSaveConsumer(val -> config.opacity = val / 100.0f)
                 .build());
 
         // Colors

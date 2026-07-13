@@ -37,7 +37,7 @@ public class SoundVisualizerConfig {
     public boolean showIcons = true;
     public boolean distanceScaling = true;
     public float maxHearingDistance = 16.0f;
-    public float transparency = 1.0f;
+    public float opacity = 1.0f;
 
     private Path configPath;
 
@@ -113,7 +113,7 @@ public class SoundVisualizerConfig {
             showIcons = Boolean.parseBoolean(props.getProperty("showIcons", "true"));
             distanceScaling = Boolean.parseBoolean(props.getProperty("distanceScaling", "true"));
             maxHearingDistance = Float.parseFloat(props.getProperty("maxHearingDistance", "16.0"));
-            transparency = Float.parseFloat(props.getProperty("transparency", "1.0"));
+            opacity = Float.parseFloat(props.getProperty("opacity", props.getProperty("transparency", "1.0")));
             LOGGER.info("Config loaded successfully");
         } catch (Exception e) {
             LOGGER.error("Failed to load config, using defaults", e);
@@ -147,7 +147,7 @@ public class SoundVisualizerConfig {
             props.setProperty("showIcons", String.valueOf(showIcons));
             props.setProperty("distanceScaling", String.valueOf(distanceScaling));
             props.setProperty("maxHearingDistance", String.valueOf(maxHearingDistance));
-            props.setProperty("transparency", String.valueOf(transparency));
+            props.setProperty("opacity", String.valueOf(opacity));
             
             try (OutputStream out = Files.newOutputStream(configPath)) {
                 props.store(out, "Sound Visualizer Configuration");

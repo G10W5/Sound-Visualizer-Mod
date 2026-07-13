@@ -60,7 +60,7 @@ public class SoundIndicatorRenderer {
         float r = ((catColor >> 16) & 0xFF) / 255.0f;
         float g = ((catColor >> 8) & 0xFF) / 255.0f;
         float b = (catColor & 0xFF) / 255.0f;
-        float baseAlpha = alpha * hit.alpha * SoundVisualizerConfig.INSTANCE.transparency;
+        float baseAlpha = alpha * hit.alpha * SoundVisualizerConfig.INSTANCE.opacity;
         
         drawArc(ctx, size, r, g, b, baseAlpha);
 

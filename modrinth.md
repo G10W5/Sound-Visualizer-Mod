@@ -39,6 +39,11 @@ Open via Mod Menu (Fabric) or the Mods button (NeoForge). Settings include:
 
 ## Changelog
 
+### 2.1.0-beta.2
+- Fixed config not loading on NeoForge (settings now persist across restarts)
+- Renamed Transparency to Opacity for clarity
+- Added single universal JAR for both Fabric and NeoForge
+
 ### 2.1.0-beta.1
 - Added Transparency slider (0-100%) to reduce indicator visibility
 - Fixed config not persisting across restarts

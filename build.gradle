@@ -35,3 +35,21 @@ subprojects {
         targetCompatibility = JavaVersion.VERSION_25
     }
 }
+
+tasks.register("universalJar", Jar) {
+    archiveClassifier = "universal"
+    archiveBaseName.set(rootProject.archives_base_name)
+    archiveVersion.set(rootProject.mod_version)
+    destinationDirectory.set(layout.buildDirectory.dir("libs"))
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    dependsOn(":fabric:shadowJar", ":neoforge:shadowJar")
+
+    from({
+        zipTree(project(":fabric").tasks.shadowJar.archiveFile)
+    })
+    from({
+        zipTree(project(":neoforge").tasks.shadowJar.archiveFile)
+    })
+    from(rootProject.file("LICENSE"))
+}
