@@ -13,20 +13,20 @@ config="soundvisualizer.mixins.json"
 [[dependencies.soundvisualizer]]
     modId="minecraft"
     type="required"
-    versionRange="[26.1,)"
+    versionRange="[26.3,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.soundvisualizer]]
     modId="architectury"
     type="required"
-    versionRange="[20.0.0,)"
+    versionRange="[22.0.0,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.soundvisualizer]]
     modId="cloth_config"
     type="required"
-    versionRange="[26.1.0,)"
+    versionRange="[26.3.0,)"
     ordering="NONE"
     side="BOTH"

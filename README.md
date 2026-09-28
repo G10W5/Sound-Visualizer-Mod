@@ -23,7 +23,7 @@ Sounds are automatically identified and color-coded:
 Sounds from the same direction and category merge into a single indicator. No more HUD clutter from rapid-fire sounds.
 
 ### Configurable
-- **Transparency** — 0% to 100% slider to reduce visual intensity
+- **Opacity** — 0% to 100% slider to reduce visual intensity
 - **Arc Thickness** — Adjust indicator size
 - **Orbit Radius** — How far indicators sit from crosshair
 - **Icon Scale** — Resize category icons
@@ -37,9 +37,9 @@ Sounds from the same direction and category merge into a single indicator. No mo
 
 ## Requirements
 
-- Minecraft **26.1+** (tested on 26.1.2 and 26.2)
+- Minecraft **26.3**
 - Java **25**
-- **Fabric Loader** 0.19+ or **NeoForge** 26.1+
+- **Fabric Loader** 0.19.5+ or **NeoForge** 26.3+
 - **Architectury API**
 - **Cloth Config**
 - **Mod Menu** (Fabric, optional — provides config screen)
@@ -72,6 +72,11 @@ Settings are saved to `config/soundvisualizer.properties` and persist across res
 ---
 
 ## Changelog
+
+### 2.3.0
+- Updated to Minecraft 26.3
+- Updated Fabric API, Architectury API, NeoForge, Cloth Config, Mod Menu, and Fabric Loader
+- Updated Architectury Loom to 1.17 and Gradle to 9.6
 
 ### 2.2.0
 - Added category enable/disable toggles — hide categories you don't want to see

@@ -13,13 +13,13 @@ config="soundvisualizer.mixins.json"
 [[dependencies.soundvisualizer]]
     modId="neoforge"
     type="required"
-    versionRange="[26.1,)"
+    versionRange="[26.3,)"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.soundvisualizer]]
     modId="minecraft"
     type="required"
-    versionRange="[26.1.2,)"
+    versionRange="[26.3,)"
     ordering="NONE"
     side="BOTH"

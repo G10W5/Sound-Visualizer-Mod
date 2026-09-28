@@ -37,7 +37,7 @@ processResources {
 
     var replaceProperties = [
             minecraft_version      : rootProject.minecraft_version,
-            minecraft_version_range: "[26.1,)",
+            minecraft_version_range: "[26.3,)",
             neo_version            : rootProject.neoforge_version,
             mod_id                 : project.mod_id,
             mod_name               : "Sound Visualizer",
