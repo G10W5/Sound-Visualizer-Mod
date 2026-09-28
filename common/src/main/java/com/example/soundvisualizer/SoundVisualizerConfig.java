@@ -20,6 +20,16 @@ public class SoundVisualizerConfig {
     public static final Logger LOGGER = LoggerFactory.getLogger("soundvisualizer-config");
     public static final SoundVisualizerConfig INSTANCE = new SoundVisualizerConfig();
 
+    public enum IndicatorStyle {
+        ARC("Arc (Radiant Glow)"),
+        CHEVRON("Chevron (Tactical HUD)"),
+        RING("Ring (Minimalist)");
+
+        private final String label;
+        IndicatorStyle(String label) { this.label = label; }
+        public String getLabel() { return label; }
+    }
+
     public int colorHostile = SoundCategory.HOSTILE.getDefaultColor();
     public int colorFriendly = SoundCategory.FRIENDLY.getDefaultColor();
     public int colorAmbient = SoundCategory.AMBIENT.getDefaultColor();
@@ -27,16 +37,21 @@ public class SoundVisualizerConfig {
     public int colorPlayer = SoundCategory.PLAYER.getDefaultColor();
     public int colorNeutral = SoundCategory.NEUTRAL.getDefaultColor();
     
+    public IndicatorStyle indicatorStyle = IndicatorStyle.ARC;
     public double radius = 50.0;
     public float fadeTimeSeconds = 2.0f;
     
-    public float arcThickness = 32.0f;
+    public float arcThickness = 22.0f;
     public float arcSpanDegrees = 30.0f;
     public float iconScale = 1.0f;
+    public float glowIntensity = 1.0f;
 
     public List<String> whitelist = new ArrayList<>();
     public List<String> blacklist = new ArrayList<>(List.of("minecraft:weather.rain"));
     public boolean showIcons = true;
+    public boolean showRipples = true;
+    public boolean smoothTracking = true;
+    public float smoothingSpeed = 14.0f;
     public boolean distanceScaling = true;
     public float maxHearingDistance = 16.0f;
     public float opacity = 1.0f;
@@ -123,16 +138,26 @@ public class SoundVisualizerConfig {
             colorPlayer = parseColor(props.getProperty("colorPlayer", "FFFFFF"), SoundCategory.PLAYER.getDefaultColor());
             colorNeutral = parseColor(props.getProperty("colorNeutral", "AAAAAA"), SoundCategory.NEUTRAL.getDefaultColor());
             
+            try {
+                indicatorStyle = IndicatorStyle.valueOf(props.getProperty("indicatorStyle", "ARC").toUpperCase());
+            } catch (Exception e) {
+                indicatorStyle = IndicatorStyle.ARC;
+            }
+
             radius = Double.parseDouble(props.getProperty("radius", "50.0"));
             fadeTimeSeconds = Float.parseFloat(props.getProperty("fadeTimeSeconds", "2.0"));
             
             arcThickness = Float.parseFloat(props.getProperty("arcThickness", "32.0"));
             arcSpanDegrees = Float.parseFloat(props.getProperty("arcSpanDegrees", "30.0"));
             iconScale = Float.parseFloat(props.getProperty("iconScale", "1.0"));
+            glowIntensity = Float.parseFloat(props.getProperty("glowIntensity", "1.0"));
             
             whitelist = parseList(props.getProperty("whitelist", ""));
             blacklist = parseList(props.getProperty("blacklist", "minecraft:weather.rain"));
             showIcons = Boolean.parseBoolean(props.getProperty("showIcons", "true"));
+            showRipples = Boolean.parseBoolean(props.getProperty("showRipples", "true"));
+            smoothTracking = Boolean.parseBoolean(props.getProperty("smoothTracking", "true"));
+            smoothingSpeed = Float.parseFloat(props.getProperty("smoothingSpeed", "14.0"));
             distanceScaling = Boolean.parseBoolean(props.getProperty("distanceScaling", "true"));
             maxHearingDistance = Float.parseFloat(props.getProperty("maxHearingDistance", "16.0"));
             opacity = Float.parseFloat(props.getProperty("opacity", props.getProperty("transparency", "1.0")));
@@ -158,16 +183,21 @@ public class SoundVisualizerConfig {
             props.setProperty("colorPlayer", String.format("%06X", colorPlayer & 0xFFFFFF));
             props.setProperty("colorNeutral", String.format("%06X", colorNeutral & 0xFFFFFF));
             
+            props.setProperty("indicatorStyle", indicatorStyle.name());
             props.setProperty("radius", String.valueOf(radius));
             props.setProperty("fadeTimeSeconds", String.valueOf(fadeTimeSeconds));
             
             props.setProperty("arcThickness", String.valueOf(arcThickness));
             props.setProperty("arcSpanDegrees", String.valueOf(arcSpanDegrees));
             props.setProperty("iconScale", String.valueOf(iconScale));
+            props.setProperty("glowIntensity", String.valueOf(glowIntensity));
             
             props.setProperty("whitelist", listToString(whitelist));
             props.setProperty("blacklist", listToString(blacklist));
             props.setProperty("showIcons", String.valueOf(showIcons));
+            props.setProperty("showRipples", String.valueOf(showRipples));
+            props.setProperty("smoothTracking", String.valueOf(smoothTracking));
+            props.setProperty("smoothingSpeed", String.valueOf(smoothingSpeed));
             props.setProperty("distanceScaling", String.valueOf(distanceScaling));
             props.setProperty("maxHearingDistance", String.valueOf(maxHearingDistance));
             props.setProperty("opacity", String.valueOf(opacity));

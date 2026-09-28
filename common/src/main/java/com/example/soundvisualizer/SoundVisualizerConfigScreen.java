@@ -21,8 +21,13 @@ public class SoundVisualizerConfigScreen {
                 Component.translatable("category.soundvisualizer.general"));
 
         // Global settings
-        general.addEntry(eb.startIntSlider(Component.translatable("option.soundvisualizer.arcThickness"), (int) config.arcThickness, 8, 64)
-                .setDefaultValue(32)
+        general.addEntry(eb.startEnumSelector(Component.translatable("option.soundvisualizer.indicatorStyle"), SoundVisualizerConfig.IndicatorStyle.class, config.indicatorStyle)
+                .setDefaultValue(SoundVisualizerConfig.IndicatorStyle.ARC)
+                .setSaveConsumer(val -> config.indicatorStyle = val)
+                .build());
+
+        general.addEntry(eb.startIntSlider(Component.translatable("option.soundvisualizer.arcThickness"), (int) config.arcThickness, 8, 48)
+                .setDefaultValue(22)
                 .setSaveConsumer(val -> config.arcThickness = val)
                 .build());
 
@@ -34,6 +39,26 @@ public class SoundVisualizerConfigScreen {
         general.addEntry(eb.startFloatField(Component.translatable("option.soundvisualizer.fadeTime"), config.fadeTimeSeconds)
                 .setDefaultValue(2.0f)
                 .setSaveConsumer(val -> config.fadeTimeSeconds = val)
+                .build());
+
+        general.addEntry(eb.startIntSlider(Component.translatable("option.soundvisualizer.glowIntensity"), (int) (config.glowIntensity * 100), 0, 200)
+                .setDefaultValue(100)
+                .setSaveConsumer(val -> config.glowIntensity = val / 100.0f)
+                .build());
+
+        general.addEntry(eb.startBooleanToggle(Component.translatable("option.soundvisualizer.showRipples"), config.showRipples)
+                .setDefaultValue(true)
+                .setSaveConsumer(val -> config.showRipples = val)
+                .build());
+
+        general.addEntry(eb.startBooleanToggle(Component.translatable("option.soundvisualizer.smoothTracking"), config.smoothTracking)
+                .setDefaultValue(true)
+                .setSaveConsumer(val -> config.smoothTracking = val)
+                .build());
+
+        general.addEntry(eb.startIntSlider(Component.translatable("option.soundvisualizer.smoothingSpeed"), (int) config.smoothingSpeed, 4, 30)
+                .setDefaultValue(14)
+                .setSaveConsumer(val -> config.smoothingSpeed = (float) val)
                 .build());
 
         general.addEntry(eb.startBooleanToggle(Component.translatable("option.soundvisualizer.distanceScaling"), config.distanceScaling)
