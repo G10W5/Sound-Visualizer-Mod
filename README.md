@@ -31,6 +31,7 @@ Sounds from the same direction and category merge into a single indicator. No mo
 - **Distance Scaling** — Indicators shrink with distance
 - **Show/Hide Icons** — Toggle category icons on arcs
 - **Whitelist/Blacklist** — Filter specific sound events
+- **Category Toggles** — Enable or disable each sound category
 - **Custom Colors** — Per-category color picker
 
 ---
@@ -68,42 +69,6 @@ Settings are saved to `config/soundvisualizer.properties` and persist across res
 - **Client-side only** — no server install required
 - **Zero FPS impact** — uses optimized 2D matrix rendering
 - **No ghosting artifacts** — clean indicators without post-processing
-
----
-
-## Changelog
-
-### 2.3.0
-- Updated to Minecraft 26.3
-- Updated Fabric API, Architectury API, NeoForge, Cloth Config, Mod Menu, and Fabric Loader
-- Updated Architectury Loom to 1.17 and Gradle to 9.6
-
-### 2.2.0
-- Added category enable/disable toggles — hide categories you don't want to see
-- Improved Presence Footsteps compatibility — footsteps now correctly show neutral icons
-- Fixed SoundSource.NEUTRAL being misclassified as Friendly
-
-### 2.1.0-beta.2
-- Fixed config not loading on NeoForge (settings now persist across restarts)
-- Renamed Transparency to Opacity for clarity
-- Added single universal JAR for both Fabric and NeoForge
-
-### 2.1.0-beta.1
-- Added Transparency slider (0-100%) to reduce indicator visibility
-- Fixed config not persisting across restarts
-
-### 2.1.0-beta
-- Updated to Minecraft 26.1.2 and Java 25
-- Updated Architectury API, Fabric API, NeoForge, Cloth Config, and Mod Menu
-- Migrated Shadow plugin for Gradle 9.x compatibility
-- Fixed Fabric client source set configuration
-- Verified working on Fabric (26.2) and NeoForge (26.1.2, 26.2)
-
-### 2.0.0
-- Initial cross-loader release (Fabric + NeoForge via Architectury)
-- Added NeoForge support
-- Added config screen via Cloth Config
-- Added sound merging, distance scaling, and icon rendering
 
 ---
 
