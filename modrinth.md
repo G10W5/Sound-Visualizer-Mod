@@ -2,45 +2,60 @@
 
 > Never miss a sound again.
 
-Sound Visualizer translates in-game audio into intuitive HUD indicators. See where sounds come from before you see the source. Works on both **Fabric** and **NeoForge** — one universal JAR for both.
+Sound Visualizer translates in-game audio into clean, directional HUD indicators around your crosshair. See where sounds come from before you see the source. Works on both **Fabric** and **NeoForge** — one universal JAR for both.
 
 ## Features
 
-- **Color-coded indicators** — Hostile (red), Friendly (green), Footsteps (gray), Blocks (yellow), Player (white), Ambient (cyan)
-- **Category toggles** — Enable or disable each sound category individually
-- **Smart merging** — Same-direction sounds merge into one indicator to reduce clutter
-- **Opacity control** — Adjust overall indicator visibility from 0% to 100%
-- **Custom colors** — Pick your own color for each sound category
-- **Icon support** — Category icons rendered on each arc
-- **Whitelist/Blacklist** — Filter specific sound events
-- **Presence Footsteps compatible** — Footsteps from modded sources detected correctly
-- **Client-side only** — Works on any server, no install required
+- **Procedural HUD indicators** — Smooth tapered arcs with independent length and thickness, soft bloom glow, and optional ripple echoes when a source repeats
+- **3 indicator styles & 4 presets** — Choose between **Arc**, **Dashed**, and **Chevron** styles, or apply **Minimal** (default), **Balanced**, **Cinematic**, or **Tactical** presets
+- **Live config preview** — See your changes update in real time inside the Appearance settings menu (click the preview box to trigger a pulse)
+- **Crisp 16×16 pixel-art icons** — Hostile (red), Friendly (green), Footsteps (gray), Blocks (yellow), Player (white), and Ambient (cyan), with optional backdrop disc and category tinting
+- **Smart sound detection** — Automatically filters out non-positional UI/music sounds and your own footsteps/swings, includes hostile footsteps in Hostile, supports **Presence Footsteps**, and falls back to `SoundSource` for modded mobs
+- **Anti-spam merging** — Sounds from the same direction and category merge smoothly into one indicator
+- **Wildcard filters** — Whitelist and blacklist support full IDs, partial matches, and `*` wildcards (e.g. `entity.*.step`, `block.*.place`)
+- **Polished behavior** — Smooth view tracking, pause-aware fade timers, automatic F1 HUD hiding, and an assignable toggle keybind (*Controls › Sound Visualizer*)
+- **Client-side only** — Works on any server, no server install required
 
 ## Configuration
 
-Open via **Mod Menu** (Fabric) or the **Mods** button (NeoForge), then find **Sound Visualizer** and click **Config**.
+Open via **Mod Menu** (Fabric) or the **Mods** button (NeoForge), find **Sound Visualizer**, and click **Config**.
+
+### Appearance tab
+Includes a **Live Preview** at the top of the page.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
+| Enable HUD | On | Show or hide indicators (also toggleable via keybind) |
+| Apply Preset | Minimal | Quickly switch between Minimal, Balanced, Cinematic, and Tactical |
+| Indicator Style | Arc | `Arc`, `Dashed`, or `Chevron` |
+| Orbit Radius | 50 px | Distance from the crosshair |
+| Line Thickness | 2.5 px | Width of the arc line |
+| Arc Length | 28° | Angular length of each indicator |
+| Glow | 35% | Soft bloom around the arc (`0%` disables) |
 | Opacity | 100% | Overall indicator visibility |
-| Arc Thickness | 32 | Size of the directional arcs |
-| Orbit Radius | 50 | Distance from crosshair |
-| Icon Scale | 1.0 | Size of category icons |
-| Fade Time | 2.0s | How long indicators linger |
-| Distance Scaling | On | Indicators shrink with distance |
-| Show Icons | On | Display category icons on arcs |
-| Max Hearing Distance | 16 | Maximum range for sound detection |
+| Fade Time | 1.5 s | How long indicators linger (pauses with the game) |
+| Ripple Echo | Off | Expanding echo when a sound source repeats |
+| Category Icons | On | Show 16×16 pixel-art icon in the center of each arc |
+| Icon Size | 0.9x | Scale of category icons |
+| Icon Backdrop | Off | Soft dark disc behind icons for bright backgrounds |
+| Tint Icons | Off | Tint icons with their category color instead of white |
 
-### Category Colors tab
+### Detection tab
 
-Each category has two settings:
-- **Show** — Toggle to enable/disable that category
-- **Color** — Pick a custom color for the indicator
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Hearing Distance | 16 blocks | Maximum range for sound detection |
+| Hide My Own Sounds | On | Ignore your own footsteps, swings, eating, and armor |
+| Merge Angle | 18° | Merge same-category sounds within this angle (`0°` disables) |
+| Distance Emphasis | On | Nearby sounds appear thicker and longer than distant ones |
+| Smooth Tracking | On | Smoothly glide indicators as you turn |
+| Tracking Speed | 14 | How quickly indicators follow your camera |
+| Whitelist | Empty | Only show matching sound events (supports `*` wildcards) |
+| Blacklist | `minecraft:weather.rain` | Hide matching sound events (supports `*` wildcards) |
 
-### Filter Settings tab
-
-- **Whitelist** — Only show these sound events
-- **Blacklist** — Hide these sound events (default: `minecraft:weather.rain`)
+### Categories tab
+- **Enable / Disable** toggle for each category
+- **Custom Color** picker for each category
 
 ## Requirements
 
@@ -57,40 +72,6 @@ Each category has two settings:
 2. Install Architectury API and Cloth Config
 3. Drop the universal JAR into your `mods` folder
 4. Launch — no server-side install needed
-
-## Changelog
-
-### 2.3.0
-- Updated to Minecraft 26.3
-- Updated Fabric API, Architectury API, NeoForge, Cloth Config, Mod Menu, and Fabric Loader
-- Updated Architectury Loom to 1.17 and Gradle to 9.6
-
-### 2.2.0
-- Added category enable/disable toggles — hide categories you don't want to see
-- Improved Presence Footsteps compatibility — footsteps now correctly show neutral icons
-- Fixed SoundSource.NEUTRAL being misclassified as Friendly
-
-### 2.1.0-beta.2
-- Fixed config not loading on NeoForge (settings now persist across restarts)
-- Renamed Transparency to Opacity for clarity
-- Added single universal JAR for both Fabric and NeoForge
-
-### 2.1.0-beta.1
-- Added Opacity slider (0-100%) to reduce indicator visibility
-- Fixed config not persisting across restarts
-
-### 2.1.0-beta
-- Updated to Minecraft 26.1.2 and Java 25
-- Updated Architectury API, Fabric API, NeoForge, Cloth Config, and Mod Menu
-- Migrated Shadow plugin for Gradle 9.x compatibility
-- Fixed Fabric client source set configuration
-- Verified working on Fabric (26.2) and NeoForge (26.1.2, 26.2)
-
-### 2.0.0
-- Initial cross-loader release (Fabric + NeoForge via Architectury)
-- Added NeoForge support
-- Added config screen via Cloth Config
-- Added sound merging, distance scaling, and icon rendering
 
 ## License
 
