@@ -1,129 +1,116 @@
 package com.example.soundvisualizer;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
 public class SoundVisualizerHit {
-    public Identifier soundId;
-    public Vec3 position;
-    public final Component subtitle;
-    public final float range;
-    public float volume;
-    public final SoundCategory category;
-    
-    public long startTime;
-    public long lastMergeTime;
-    public long lastFrameTime;
-    
-    public float smoothedRelativeAngle = 0.0f;
-    public boolean hasInitializedAngle = false;
-    
-    public float alpha = 1.0f;
-    public float scale = 1.0f;
-    public float rippleProgress = 0.0f;
-    public float mergeFlash = 0.0f;
-    public double elevationDelta = 0.0;
-    public float distanceFactor = 1.0f;
+    private static final float FADE_IN_MS = 90.0f;
+    private static final float HOLD_FRACTION = 0.25f;
 
-    public SoundVisualizerHit(Identifier soundId, Vec3 position, Component subtitle, float range, float volume,
-            SoundCategory category) {
+    public final Identifier soundId;
+    public final SoundCategory category;
+    public Vec3 position;
+    public float volume;
+    public int mergeCount = 1;
+
+    private final long spawnTime;
+    private long refreshTime;
+    private boolean angleInitialized = false;
+
+    // Animated state (read by the renderer)
+    public float angle = 0.0f;        // degrees, 0 = straight ahead, clockwise
+    public float alpha = 0.0f;
+    public float scale = 1.0f;
+    public float intensity = 1.0f;    // distance/volume driven emphasis
+    public float ripple = 1.0f;       // 0..1 progress of the refresh shockwave
+    public float flash = 0.0f;
+    private boolean expired = false;
+
+    public SoundVisualizerHit(Identifier soundId, Vec3 position, float volume, SoundCategory category) {
         this.soundId = soundId;
         this.position = position;
-        this.subtitle = subtitle;
-        this.range = Math.max(range, 1.0f);
-        this.volume = Math.max(volume, 0.1f);
+        this.volume = Math.max(0.1f, volume);
         this.category = category;
-        
-        long now = System.currentTimeMillis();
-        this.startTime = now;
-        this.lastMergeTime = now;
-        this.lastFrameTime = now;
+        this.spawnTime = HudClock.now();
+        this.refreshTime = spawnTime;
     }
 
-    public void refresh(Vec3 newPos, float newVol) {
-        this.position = newPos;
-        this.volume = Math.max(this.volume, newVol);
-        long now = System.currentTimeMillis();
-        this.startTime = now;
-        this.lastMergeTime = now;
+    public void refresh(Vec3 newPos, float newVolume) {
+        // Ease the tracked position toward the newest emission to avoid jumps
+        this.position = position.lerp(newPos, 0.65);
+        this.volume = Math.max(volume * 0.8f, newVolume);
+        this.refreshTime = HudClock.now();
+        this.mergeCount++;
     }
 
     public void update(Minecraft client, float partialTick) {
-        long now = System.currentTimeMillis();
-        long elapsed = now - startTime;
-        float fadeTimeMs = Math.max(100.0f, SoundVisualizerConfig.INSTANCE.fadeTimeSeconds * 1000.0f);
-        
-        float progress = Math.min(1.0f, (float) elapsed / fadeTimeMs);
-        // Smooth continuous fade out
-        alpha = Math.max(0.0f, (float) Math.pow(1.0f - progress, 1.15));
-        
-        // Elastic pop-in & merge pulse
-        float baseScale = 1.0f;
-        if (elapsed < 300) {
-            float popT = elapsed / 300.0f;
-            baseScale = 1.0f + (float) (Math.sin(popT * Math.PI) * 0.35f * (1.0f - popT));
+        SoundVisualizerConfig cfg = SoundVisualizerConfig.INSTANCE;
+        long now = HudClock.now();
+        float sinceSpawn = now - spawnTime;
+        float sinceRefresh = now - refreshTime;
+        float fadeMs = Math.max(250.0f, cfg.fadeTimeSeconds * 1000.0f);
+
+        // Opacity: quick fade-in, hold, then smoothstep fade-out
+        float life = Mth.clamp(sinceRefresh / fadeMs, 0.0f, 1.0f);
+        float fadeOut = life < HOLD_FRACTION ? 1.0f
+                : 1.0f - smoothstep((life - HOLD_FRACTION) / (1.0f - HOLD_FRACTION));
+        float fadeIn = easeOutCubic(Mth.clamp(sinceSpawn / FADE_IN_MS, 0.0f, 1.0f));
+        alpha = fadeOut * fadeIn;
+        expired = life >= 1.0f;
+
+        // Scale: elastic pop on spawn, softer pulse on refresh
+        float s = 1.0f;
+        if (sinceSpawn < 280.0f) {
+            float p = sinceSpawn / 280.0f;
+            s += (float) Math.sin(p * Math.PI) * 0.22f * (1.0f - p);
+        }
+        if (sinceRefresh < 220.0f && refreshTime != spawnTime) {
+            float p = sinceRefresh / 220.0f;
+            s += (float) Math.sin(p * Math.PI) * 0.10f;
+        }
+        scale = s;
+
+        ripple = Mth.clamp(sinceRefresh / 480.0f, 0.0f, 1.0f);
+        flash = sinceRefresh < 300.0f ? (1.0f - sinceRefresh / 300.0f) * (1.0f - sinceRefresh / 300.0f) : 0.0f;
+
+        if (client.player == null) return;
+
+        double dx = position.x - client.player.getX();
+        double dz = position.z - client.player.getZ();
+        double dist = Math.sqrt(dx * dx + dz * dz);
+
+        if (cfg.distanceScaling) {
+            float norm = (float) Mth.clamp(dist / Math.max(1.0f, cfg.maxHearingDistance), 0.0, 1.0);
+            float vol = Mth.clamp(volume, 0.3f, 1.5f);
+            intensity = Mth.lerp(norm, 1.2f, 0.7f) * (0.9f + 0.1f * vol);
         } else {
-            baseScale = 1.0f - (progress * 0.15f);
+            intensity = 1.0f;
         }
 
-        // Merge animation & ripple wave
-        if (lastMergeTime > 0) {
-            long mergeElapsed = now - lastMergeTime;
-            if (mergeElapsed < 400) {
-                float mergeT = mergeElapsed / 400.0f;
-                rippleProgress = mergeT;
-                mergeFlash = (float) Math.pow(1.0f - mergeT, 2.0);
-                baseScale += (float) (Math.sin(mergeT * Math.PI) * 0.2f);
-            } else {
-                rippleProgress = 1.0f;
-                mergeFlash = 0.0f;
-            }
+        // Direction relative to camera yaw, exponentially smoothed (frame-rate independent)
+        float yaw = client.player.getViewYRot(partialTick);
+        float target = Mth.wrapDegrees((float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0f - yaw);
+        if (!angleInitialized || !cfg.smoothTracking) {
+            angle = target;
+            angleInitialized = true;
+        } else {
+            float k = 1.0f - (float) Math.exp(-cfg.smoothingSpeed * HudClock.frameSeconds());
+            angle = Mth.wrapDegrees(angle + Mth.wrapDegrees(target - angle) * k);
         }
-
-        this.scale = baseScale;
-
-        // Player distance and elevation
-        if (client.player != null) {
-            double dx = position.x - client.player.getX();
-            double dy = position.y - (client.player.getY() + client.player.getEyeHeight(client.player.getPose()));
-            double dz = position.z - client.player.getZ();
-            double dist = Math.sqrt(dx * dx + dz * dz);
-            
-            this.elevationDelta = dy;
-            
-            if (SoundVisualizerConfig.INSTANCE.distanceScaling) {
-                float maxDist = Math.max(1.0f, SoundVisualizerConfig.INSTANCE.maxHearingDistance);
-                float normalizedDist = (float) Math.min(1.0, dist / maxDist);
-                this.distanceFactor = 1.25f - (normalizedDist * 0.5f);
-            } else {
-                this.distanceFactor = 1.0f;
-            }
-
-            // Smooth angle interpolation
-            double angleToSound = Math.atan2(dz, dx) * (180.0 / Math.PI) - 90.0;
-            float playerYaw = client.player.getViewYRot(partialTick);
-            float targetAngle = (float) Mth.wrapDegrees(angleToSound - playerYaw);
-
-            if (!hasInitializedAngle || !SoundVisualizerConfig.INSTANCE.smoothTracking) {
-                smoothedRelativeAngle = targetAngle;
-                hasInitializedAngle = true;
-            } else {
-                long frameDtMs = Math.min(100, Math.max(1, now - lastFrameTime));
-                float dtSec = frameDtMs / 1000.0f;
-                float speed = SoundVisualizerConfig.INSTANCE.smoothingSpeed;
-                float angleDiff = (float) Mth.wrapDegrees(targetAngle - smoothedRelativeAngle);
-                float lerpFactor = (float) (1.0 - Math.exp(-speed * dtSec));
-                smoothedRelativeAngle = (float) Mth.wrapDegrees(smoothedRelativeAngle + angleDiff * lerpFactor);
-            }
-        }
-        
-        lastFrameTime = now;
     }
 
     public boolean isExpired() {
-        return alpha <= 0.001f;
+        return expired;
+    }
+
+    private static float smoothstep(float t) {
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    private static float easeOutCubic(float t) {
+        float inv = 1.0f - t;
+        return 1.0f - inv * inv * inv;
     }
 }

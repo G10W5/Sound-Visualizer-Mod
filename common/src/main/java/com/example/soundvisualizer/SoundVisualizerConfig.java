@@ -14,201 +14,280 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class SoundVisualizerConfig {
     public static final Logger LOGGER = LoggerFactory.getLogger("soundvisualizer-config");
     public static final SoundVisualizerConfig INSTANCE = new SoundVisualizerConfig();
+    private static final int CONFIG_VERSION = 4;
 
     public enum IndicatorStyle {
-        ARC("Arc (Radiant Glow)"),
-        CHEVRON("Chevron (Tactical HUD)"),
-        RING("Ring (Minimalist)");
-
-        private final String label;
-        IndicatorStyle(String label) { this.label = label; }
-        public String getLabel() { return label; }
+        ARC, DASHED, CHEVRON
     }
 
+    public enum Preset {
+        CUSTOM, MINIMAL, BALANCED, CINEMATIC, TACTICAL
+    }
+
+    // General (Minimal preset defaults)
+    public boolean enabled = true;
+    public IndicatorStyle indicatorStyle = IndicatorStyle.ARC;
+    public double radius = 50.0;
+    public float lineThickness = 2.5f;
+    public float arcSpanDegrees = 28.0f;
+    public float glowIntensity = 0.35f;
+    public float opacity = 1.0f;
+    public float fadeTimeSeconds = 1.5f;
+    public boolean showRipples = false;
+
+    // Icons
+    public boolean showIcons = true;
+    public float iconScale = 0.9f;
+    public boolean iconBackdrop = false;
+    public boolean tintIcons = false;
+
+    // Detection
+    public float maxHearingDistance = 16.0f;
+    public boolean hideOwnSounds = true;
+    public float mergeAngle = 18.0f;
+    public boolean smoothTracking = true;
+    public float smoothingSpeed = 14.0f;
+    public boolean distanceScaling = true;
+    public List<String> whitelist = new ArrayList<>();
+    public List<String> blacklist = new ArrayList<>(List.of("minecraft:weather.rain"));
+
+    // Categories
     public int colorHostile = SoundCategory.HOSTILE.getDefaultColor();
     public int colorFriendly = SoundCategory.FRIENDLY.getDefaultColor();
     public int colorAmbient = SoundCategory.AMBIENT.getDefaultColor();
     public int colorBlocks = SoundCategory.BLOCKS.getDefaultColor();
     public int colorPlayer = SoundCategory.PLAYER.getDefaultColor();
     public int colorNeutral = SoundCategory.NEUTRAL.getDefaultColor();
-    
-    public IndicatorStyle indicatorStyle = IndicatorStyle.ARC;
-    public double radius = 50.0;
-    public float fadeTimeSeconds = 2.0f;
-    
-    public float arcThickness = 22.0f;
-    public float arcSpanDegrees = 30.0f;
-    public float iconScale = 1.0f;
-    public float glowIntensity = 1.0f;
-
-    public List<String> whitelist = new ArrayList<>();
-    public List<String> blacklist = new ArrayList<>(List.of("minecraft:weather.rain"));
-    public boolean showIcons = true;
-    public boolean showRipples = true;
-    public boolean smoothTracking = true;
-    public float smoothingSpeed = 14.0f;
-    public boolean distanceScaling = true;
-    public float maxHearingDistance = 16.0f;
-    public float opacity = 1.0f;
     public Set<SoundCategory> disabledCategories = EnumSet.noneOf(SoundCategory.class);
 
     private Path configPath;
 
-    private SoundVisualizerConfig() {
+    public SoundVisualizerConfig() {
+    }
+
+    public SoundVisualizerConfig copyVisual() {
+        SoundVisualizerConfig copy = new SoundVisualizerConfig();
+        copy.enabled = this.enabled;
+        copy.indicatorStyle = this.indicatorStyle;
+        copy.radius = this.radius;
+        copy.lineThickness = this.lineThickness;
+        copy.arcSpanDegrees = this.arcSpanDegrees;
+        copy.glowIntensity = this.glowIntensity;
+        copy.opacity = this.opacity;
+        copy.fadeTimeSeconds = this.fadeTimeSeconds;
+        copy.showRipples = this.showRipples;
+        copy.showIcons = this.showIcons;
+        copy.iconScale = this.iconScale;
+        copy.iconBackdrop = this.iconBackdrop;
+        copy.tintIcons = this.tintIcons;
+        copy.colorHostile = this.colorHostile;
+        copy.colorFriendly = this.colorFriendly;
+        copy.colorAmbient = this.colorAmbient;
+        copy.colorBlocks = this.colorBlocks;
+        copy.colorPlayer = this.colorPlayer;
+        copy.colorNeutral = this.colorNeutral;
+        return copy;
     }
 
     public void init(Path configPath) {
         this.configPath = configPath;
-        try {
-            Files.createDirectories(configPath.getParent());
-        } catch (IOException e) {
-            LOGGER.error("Failed to create config directory", e);
-        }
         load();
     }
 
-    private static int parseColor(String hex, int defaultRgb) {
+    public int getColor(SoundCategory category) {
+        return switch (category) {
+            case HOSTILE -> colorHostile;
+            case FRIENDLY -> colorFriendly;
+            case NEUTRAL -> colorNeutral;
+            case BLOCKS -> colorBlocks;
+            case PLAYER -> colorPlayer;
+            case AMBIENT -> colorAmbient;
+        };
+    }
+
+    public void setColor(SoundCategory category, int rgb) {
+        rgb &= 0xFFFFFF;
+        switch (category) {
+            case HOSTILE -> colorHostile = rgb;
+            case FRIENDLY -> colorFriendly = rgb;
+            case NEUTRAL -> colorNeutral = rgb;
+            case BLOCKS -> colorBlocks = rgb;
+            case PLAYER -> colorPlayer = rgb;
+            case AMBIENT -> colorAmbient = rgb;
+        }
+    }
+
+    public void applyPreset(Preset preset) {
+        switch (preset) {
+            case MINIMAL -> set(IndicatorStyle.ARC, 50.0, 2.5f, 28.0f, 0.35f, 1.5f, false, false, 0.9f);
+            case BALANCED -> set(IndicatorStyle.ARC, 56.0, 3.0f, 34.0f, 1.0f, 2.0f, true, true, 1.0f);
+            case CINEMATIC -> set(IndicatorStyle.ARC, 66.0, 4.0f, 48.0f, 1.7f, 2.6f, true, true, 1.15f);
+            case TACTICAL -> {
+                set(IndicatorStyle.CHEVRON, 52.0, 2.5f, 30.0f, 0.6f, 1.4f, false, true, 0.9f);
+                smoothingSpeed = 24.0f;
+            }
+            case CUSTOM -> {
+            }
+        }
+    }
+
+    private void set(IndicatorStyle style, double radius, float thickness, float span, float glow, float fade,
+                     boolean ripples, boolean backdrop, float iconScale) {
+        this.indicatorStyle = style;
+        this.radius = radius;
+        this.lineThickness = thickness;
+        this.arcSpanDegrees = span;
+        this.glowIntensity = glow;
+        this.fadeTimeSeconds = fade;
+        this.showRipples = ripples;
+        this.iconBackdrop = backdrop;
+        this.iconScale = iconScale;
+        this.smoothingSpeed = 14.0f;
+    }
+
+    // ---------------------------------------------------------------- persistence
+
+    public void load() {
+        if (configPath == null) return;
+        if (!Files.exists(configPath)) {
+            save();
+            return;
+        }
+        Properties p = new Properties();
+        try (InputStream in = Files.newInputStream(configPath)) {
+            p.load(in);
+        } catch (Exception e) {
+            LOGGER.error("Failed to read config, using defaults", e);
+            return;
+        }
+
+        int version = get(p, "configVersion", 1, Integer::parseInt);
+        enabled = get(p, "enabled", enabled, Boolean::parseBoolean);
+
+        if (version >= CONFIG_VERSION) {
+            indicatorStyle = get(p, "indicatorStyle", indicatorStyle, s -> IndicatorStyle.valueOf(s.toUpperCase()));
+            radius = get(p, "radius", radius, Double::parseDouble);
+            lineThickness = get(p, "lineThickness", lineThickness, Float::parseFloat);
+            arcSpanDegrees = get(p, "arcSpanDegrees", arcSpanDegrees, Float::parseFloat);
+            glowIntensity = get(p, "glowIntensity", glowIntensity, Float::parseFloat);
+            opacity = get(p, "opacity", get(p, "transparency", opacity, Float::parseFloat), Float::parseFloat);
+            fadeTimeSeconds = get(p, "fadeTimeSeconds", fadeTimeSeconds, Float::parseFloat);
+            showRipples = get(p, "showRipples", showRipples, Boolean::parseBoolean);
+
+            showIcons = get(p, "showIcons", showIcons, Boolean::parseBoolean);
+            iconScale = get(p, "iconScale", iconScale, Float::parseFloat);
+            iconBackdrop = get(p, "iconBackdrop", iconBackdrop, Boolean::parseBoolean);
+            tintIcons = get(p, "tintIcons", tintIcons, Boolean::parseBoolean);
+        } else {
+            // Migrate pre-v4 configs to Minimal visual defaults while keeping filters & category settings
+            applyPreset(Preset.MINIMAL);
+            opacity = get(p, "opacity", get(p, "transparency", opacity, Float::parseFloat), Float::parseFloat);
+            showIcons = get(p, "showIcons", showIcons, Boolean::parseBoolean);
+            tintIcons = get(p, "tintIcons", tintIcons, Boolean::parseBoolean);
+        }
+
+        maxHearingDistance = get(p, "maxHearingDistance", maxHearingDistance, Float::parseFloat);
+        hideOwnSounds = get(p, "hideOwnSounds", hideOwnSounds, Boolean::parseBoolean);
+        mergeAngle = get(p, "mergeAngle", mergeAngle, Float::parseFloat);
+        smoothTracking = get(p, "smoothTracking", smoothTracking, Boolean::parseBoolean);
+        smoothingSpeed = get(p, "smoothingSpeed", smoothingSpeed, Float::parseFloat);
+        distanceScaling = get(p, "distanceScaling", distanceScaling, Boolean::parseBoolean);
+        whitelist = parseList(p.getProperty("whitelist", ""));
+        blacklist = parseList(p.getProperty("blacklist", "minecraft:weather.rain"));
+
+        for (SoundCategory c : SoundCategory.values()) {
+            String raw = p.getProperty("color" + c.getName());
+            if (raw != null) setColor(c, parseColor(raw, c.getDefaultColor()));
+        }
+        disabledCategories = parseCategories(p.getProperty("disabledCategories", ""));
+
+        if (version < CONFIG_VERSION) save();
+    }
+
+    public void save() {
+        if (configPath == null) return;
+        Properties p = new Properties();
+        p.setProperty("configVersion", String.valueOf(CONFIG_VERSION));
+        p.setProperty("enabled", String.valueOf(enabled));
+        p.setProperty("indicatorStyle", indicatorStyle.name());
+        p.setProperty("radius", String.valueOf(radius));
+        p.setProperty("lineThickness", String.valueOf(lineThickness));
+        p.setProperty("arcSpanDegrees", String.valueOf(arcSpanDegrees));
+        p.setProperty("glowIntensity", String.valueOf(glowIntensity));
+        p.setProperty("opacity", String.valueOf(opacity));
+        p.setProperty("fadeTimeSeconds", String.valueOf(fadeTimeSeconds));
+        p.setProperty("showRipples", String.valueOf(showRipples));
+        p.setProperty("showIcons", String.valueOf(showIcons));
+        p.setProperty("iconScale", String.valueOf(iconScale));
+        p.setProperty("iconBackdrop", String.valueOf(iconBackdrop));
+        p.setProperty("tintIcons", String.valueOf(tintIcons));
+        p.setProperty("maxHearingDistance", String.valueOf(maxHearingDistance));
+        p.setProperty("hideOwnSounds", String.valueOf(hideOwnSounds));
+        p.setProperty("mergeAngle", String.valueOf(mergeAngle));
+        p.setProperty("smoothTracking", String.valueOf(smoothTracking));
+        p.setProperty("smoothingSpeed", String.valueOf(smoothingSpeed));
+        p.setProperty("distanceScaling", String.valueOf(distanceScaling));
+        p.setProperty("whitelist", String.join(",", whitelist));
+        p.setProperty("blacklist", String.join(",", blacklist));
+        for (SoundCategory c : SoundCategory.values()) {
+            p.setProperty("color" + c.getName(), String.format("%06X", getColor(c)));
+        }
+        p.setProperty("disabledCategories",
+                disabledCategories.stream().map(Enum::name).collect(Collectors.joining(",")));
+        try {
+            Files.createDirectories(configPath.getParent());
+            try (OutputStream out = Files.newOutputStream(configPath)) {
+                p.store(out, "Sound Visualizer Configuration");
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to save config", e);
+        }
+    }
+
+    private static <T> T get(Properties p, String key, T fallback, Function<String, T> parser) {
+        String raw = p.getProperty(key);
+        if (raw == null || raw.isBlank()) return fallback;
+        try {
+            return parser.apply(raw.trim());
+        } catch (Exception e) {
+            LOGGER.warn("Invalid value '{}' for {}, using default", raw, key);
+            return fallback;
+        }
+    }
+
+    private static int parseColor(String hex, int fallback) {
         try {
             hex = hex.trim().replace("#", "");
-            if (hex.length() == 8)
-                hex = hex.substring(2);
+            if (hex.length() == 8) hex = hex.substring(2);
             return Integer.parseInt(hex, 16) & 0xFFFFFF;
         } catch (Exception e) {
-            return defaultRgb;
+            return fallback;
         }
     }
 
     private static List<String> parseList(String raw) {
-        if (raw == null || raw.isBlank())
-            return new ArrayList<>();
+        if (raw == null || raw.isBlank()) return new ArrayList<>();
         return Arrays.stream(raw.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    private static String listToString(List<String> list) {
-        if (list == null || list.isEmpty())
-            return "";
-        return String.join(",", list);
-    }
-
-    private static Set<SoundCategory> parseDisabledCategories(String raw) {
-        Set<SoundCategory> disabled = EnumSet.noneOf(SoundCategory.class);
-        if (raw == null || raw.isBlank()) return disabled;
+    private static Set<SoundCategory> parseCategories(String raw) {
+        Set<SoundCategory> set = EnumSet.noneOf(SoundCategory.class);
+        if (raw == null) return set;
         for (String s : raw.split(",")) {
-            String trimmed = s.trim().toUpperCase();
-            if (!trimmed.isEmpty()) {
-                try {
-                    disabled.add(SoundCategory.valueOf(trimmed));
-                } catch (IllegalArgumentException ignored) {}
-            }
-        }
-        return disabled;
-    }
-
-    private static String disabledCategoriesToString(Set<SoundCategory> set) {
-        if (set == null || set.isEmpty()) return "";
-        return set.stream().map(Enum::name).collect(Collectors.joining(","));
-    }
-
-    public void load() {
-        if (configPath == null) {
-            LOGGER.warn("Config path not set, using defaults");
-            return;
-        }
-        if (!Files.exists(configPath)) {
-            LOGGER.info("Config file not found, saving defaults");
-            save();
-            return;
-        }
-        try (InputStream in = Files.newInputStream(configPath)) {
-            Properties props = new Properties();
-            props.load(in);
-
-            colorHostile = parseColor(props.getProperty("colorHostile", "FF0000"), SoundCategory.HOSTILE.getDefaultColor());
-            colorFriendly = parseColor(props.getProperty("colorFriendly", "00FF00"), SoundCategory.FRIENDLY.getDefaultColor());
-            colorAmbient = parseColor(props.getProperty("colorAmbient", "00FFFF"), SoundCategory.AMBIENT.getDefaultColor());
-            colorBlocks = parseColor(props.getProperty("colorBlocks", "FFFF00"), SoundCategory.BLOCKS.getDefaultColor());
-            colorPlayer = parseColor(props.getProperty("colorPlayer", "FFFFFF"), SoundCategory.PLAYER.getDefaultColor());
-            colorNeutral = parseColor(props.getProperty("colorNeutral", "AAAAAA"), SoundCategory.NEUTRAL.getDefaultColor());
-            
             try {
-                indicatorStyle = IndicatorStyle.valueOf(props.getProperty("indicatorStyle", "ARC").toUpperCase());
-            } catch (Exception e) {
-                indicatorStyle = IndicatorStyle.ARC;
+                if (!s.isBlank()) set.add(SoundCategory.valueOf(s.trim().toUpperCase()));
+            } catch (IllegalArgumentException ignored) {
             }
-
-            radius = Double.parseDouble(props.getProperty("radius", "50.0"));
-            fadeTimeSeconds = Float.parseFloat(props.getProperty("fadeTimeSeconds", "2.0"));
-            
-            arcThickness = Float.parseFloat(props.getProperty("arcThickness", "32.0"));
-            arcSpanDegrees = Float.parseFloat(props.getProperty("arcSpanDegrees", "30.0"));
-            iconScale = Float.parseFloat(props.getProperty("iconScale", "1.0"));
-            glowIntensity = Float.parseFloat(props.getProperty("glowIntensity", "1.0"));
-            
-            whitelist = parseList(props.getProperty("whitelist", ""));
-            blacklist = parseList(props.getProperty("blacklist", "minecraft:weather.rain"));
-            showIcons = Boolean.parseBoolean(props.getProperty("showIcons", "true"));
-            showRipples = Boolean.parseBoolean(props.getProperty("showRipples", "true"));
-            smoothTracking = Boolean.parseBoolean(props.getProperty("smoothTracking", "true"));
-            smoothingSpeed = Float.parseFloat(props.getProperty("smoothingSpeed", "14.0"));
-            distanceScaling = Boolean.parseBoolean(props.getProperty("distanceScaling", "true"));
-            maxHearingDistance = Float.parseFloat(props.getProperty("maxHearingDistance", "16.0"));
-            opacity = Float.parseFloat(props.getProperty("opacity", props.getProperty("transparency", "1.0")));
-            disabledCategories = parseDisabledCategories(props.getProperty("disabledCategories", ""));
-            LOGGER.info("Config loaded successfully");
-        } catch (Exception e) {
-            LOGGER.error("Failed to load config, using defaults", e);
         }
-    }
-
-    public void save() {
-        if (configPath == null) {
-            LOGGER.warn("Config path not set, cannot save");
-            return;
-        }
-        try {
-            Files.createDirectories(configPath.getParent());
-            Properties props = new Properties();
-            props.setProperty("colorHostile", String.format("%06X", colorHostile & 0xFFFFFF));
-            props.setProperty("colorFriendly", String.format("%06X", colorFriendly & 0xFFFFFF));
-            props.setProperty("colorAmbient", String.format("%06X", colorAmbient & 0xFFFFFF));
-            props.setProperty("colorBlocks", String.format("%06X", colorBlocks & 0xFFFFFF));
-            props.setProperty("colorPlayer", String.format("%06X", colorPlayer & 0xFFFFFF));
-            props.setProperty("colorNeutral", String.format("%06X", colorNeutral & 0xFFFFFF));
-            
-            props.setProperty("indicatorStyle", indicatorStyle.name());
-            props.setProperty("radius", String.valueOf(radius));
-            props.setProperty("fadeTimeSeconds", String.valueOf(fadeTimeSeconds));
-            
-            props.setProperty("arcThickness", String.valueOf(arcThickness));
-            props.setProperty("arcSpanDegrees", String.valueOf(arcSpanDegrees));
-            props.setProperty("iconScale", String.valueOf(iconScale));
-            props.setProperty("glowIntensity", String.valueOf(glowIntensity));
-            
-            props.setProperty("whitelist", listToString(whitelist));
-            props.setProperty("blacklist", listToString(blacklist));
-            props.setProperty("showIcons", String.valueOf(showIcons));
-            props.setProperty("showRipples", String.valueOf(showRipples));
-            props.setProperty("smoothTracking", String.valueOf(smoothTracking));
-            props.setProperty("smoothingSpeed", String.valueOf(smoothingSpeed));
-            props.setProperty("distanceScaling", String.valueOf(distanceScaling));
-            props.setProperty("maxHearingDistance", String.valueOf(maxHearingDistance));
-            props.setProperty("opacity", String.valueOf(opacity));
-            props.setProperty("disabledCategories", disabledCategoriesToString(disabledCategories));
-            
-            try (OutputStream out = Files.newOutputStream(configPath)) {
-                props.store(out, "Sound Visualizer Configuration");
-            }
-            LOGGER.info("Config saved to {}", configPath);
-        } catch (IOException e) {
-            LOGGER.error("Failed to save config", e);
-        }
+        return set;
     }
 }

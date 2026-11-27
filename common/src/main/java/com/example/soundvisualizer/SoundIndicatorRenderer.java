@@ -6,160 +6,234 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
-import net.minecraft.world.phys.Vec3;
-import org.joml.Matrix3x2f;
+import org.joml.Matrix3x2fStack;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+/**
+ * Procedural HUD renderer. Arcs are built from tangent-aligned strips whose
+ * texture only carries a radial alpha profile, so span, thickness and the
+ * icon gap remain exact at any size.
+ */
 public class SoundIndicatorRenderer {
-    private static final Identifier ARC_TEXTURE = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/arc.png");
-    private static final Identifier CHEVRON_TEXTURE = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/chevron.png");
-    private static final Identifier RING_TEXTURE = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/ring.png");
-    private static final Identifier SHOCKWAVE_TEXTURE = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/shockwave.png");
+    private static final Identifier BAND_CORE = id("textures/gui/band_core.png");
+    private static final Identifier BAND_GLOW = id("textures/gui/band_glow.png");
+    private static final Identifier DISC = id("textures/gui/disc.png");
 
-    private static final Identifier HOSTILE_ICON = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/hostile.png");
-    private static final Identifier FRIENDLY_ICON = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/friendly.png");
-    private static final Identifier FOOTSTEPS_ICON = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/footsteps.png");
-    private static final Identifier BLOCKS_ICON = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/block.png");
-    private static final Identifier PLAYER_ICON = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/player.png");
-    private static final Identifier AMBIENT_ICON = Identifier.fromNamespaceAndPath("soundvisualizer", "textures/gui/ambient.png");
+    private static final float ICON_BASE = 16.0f;
+    private static final float STEP_DEGREES = 1.0f;
+
+    private static Identifier id(String path) {
+        return Identifier.fromNamespaceAndPath("soundvisualizer", path);
+    }
 
     public static void render(GuiGraphicsExtractor ctx, DeltaTracker delta) {
         Minecraft client = Minecraft.getInstance();
+        HudClock.tick(client.isPaused());
         if (client.player == null || client.level == null) return;
 
-        float partialTick = delta.getGameTimeDeltaTicks();
+        SoundVisualizerConfig cfg = SoundVisualizerConfig.INSTANCE;
+        if (!cfg.enabled) {
+            SoundVisualizerCommon.HITS.clear();
+            return;
+        }
 
+        float partialTick = delta.getGameTimeDeltaTicks();
+        List<SoundVisualizerHit> visible = new ArrayList<>();
         for (SoundVisualizerHit hit : SoundVisualizerCommon.HITS) {
             hit.update(client, partialTick);
             if (hit.isExpired()) {
                 SoundVisualizerCommon.HITS.remove(hit);
-                continue;
+            } else if (!cfg.disabledCategories.contains(hit.category)) {
+                visible.add(hit);
             }
-            if (SoundVisualizerConfig.INSTANCE.disabledCategories.contains(hit.category)) {
-                continue;
-            }
-            renderSoundIndicator(ctx, hit, delta);
+        }
+        if (visible.isEmpty() || client.gui.hud.isHidden()) return;
+
+        // Higher-priority categories draw last so they stay on top
+        visible.sort(Comparator.comparingInt(h -> h.category.getPriority()));
+        float cx = ctx.guiWidth() / 2.0f;
+        float cy = ctx.guiHeight() / 2.0f;
+        for (SoundVisualizerHit hit : visible) {
+            drawIndicator(ctx, cx, cy, cfg, hit.category, hit.angle, hit.alpha,
+                    hit.scale, hit.intensity, hit.ripple, hit.flash);
         }
     }
 
-    public static void renderSoundIndicator(GuiGraphicsExtractor ctx, SoundVisualizerHit hit, DeltaTracker delta) {
-        if (hit.alpha <= 0.005f) return;
+    /**
+     * Renders a single indicator for the config screen's live preview.
+     */
+    public static void renderPreviewIndicator(GuiGraphicsExtractor ctx, float centerX, float centerY,
+                                              SoundVisualizerConfig previewCfg, SoundCategory category,
+                                              float angleDeg, float alpha, float scale,
+                                              float ripple, float flash) {
+        drawIndicator(ctx, centerX, centerY, previewCfg, category, angleDeg, alpha,
+                scale, 1.0f, ripple, flash);
+    }
 
-        Minecraft client = Minecraft.getInstance();
-        if (client.player == null) return;
+    private static void drawIndicator(GuiGraphicsExtractor ctx, float centerX, float centerY,
+                                      SoundVisualizerConfig cfg, SoundCategory category,
+                                      float angleDeg, float hitAlpha, float scale,
+                                      float intensity, float ripple, float flash) {
+        float alpha = hitAlpha * cfg.opacity;
+        if (alpha <= 0.004f) return;
 
-        SoundVisualizerConfig config = SoundVisualizerConfig.INSTANCE;
-        float baseAlpha = hit.alpha * config.opacity;
-        if (baseAlpha <= 0.005f) return;
+        int rgb = cfg.getColor(category);
+        if (flash > 0.01f) rgb = mix(rgb, 0xFFFFFF, flash * 0.5f);
 
-        float relativeAngle = hit.smoothedRelativeAngle;
+        float radius = (float) cfg.radius;
+        float emphasis = intensity * scale;
+        float thickness = Math.max(1.0f, cfg.lineThickness * emphasis);
+        float wingSpan = Mth.clamp(cfg.arcSpanDegrees * (0.85f + 0.15f * intensity), 8.0f, 180.0f);
 
-        ctx.pose().pushMatrix();
-        Matrix3x2f pose = ctx.pose();
+        float iconSize = ICON_BASE * cfg.iconScale * scale;
+        float gapDeg = cfg.showIcons
+                ? (float) Math.toDegrees(Math.atan((iconSize * 0.5f + 3.0f) / Math.max(8.0f, radius)))
+                : 0.0f;
 
-        float centerX = ctx.guiWidth() / 2.0f;
-        float centerY = ctx.guiHeight() / 2.0f;
+        Matrix3x2fStack pose = ctx.pose();
+        pose.pushMatrix();
         pose.translate(centerX, centerY);
-        pose.rotate((float) Math.toRadians(relativeAngle));
+        pose.rotate((float) Math.toRadians(angleDeg));
 
-        float baseDistance = (float) config.radius;
-        float size = config.arcThickness * hit.scale * hit.distanceFactor;
+        boolean dashed = cfg.indicatorStyle == SoundVisualizerConfig.IndicatorStyle.DASHED;
 
-        // Color calculations
-        int catColor = getCategoryColor(config, hit.category);
-        float r = ((catColor >> 16) & 0xFF) / 255.0f;
-        float g = ((catColor >> 8) & 0xFF) / 255.0f;
-        float b = (catColor & 0xFF) / 255.0f;
-
-        // Merge flash: pulse towards bright white
-        if (hit.mergeFlash > 0.01f) {
-            r = Mth.lerp(hit.mergeFlash * 0.45f, r, 1.0f);
-            g = Mth.lerp(hit.mergeFlash * 0.45f, g, 1.0f);
-            b = Mth.lerp(hit.mergeFlash * 0.45f, b, 1.0f);
+        // 1. Expanding ripple echo on refresh
+        if (cfg.showRipples && ripple < 1.0f) {
+            float echoAlpha = alpha * (1.0f - ripple) * (1.0f - ripple) * 0.55f;
+            drawArc(ctx, BAND_CORE, radius + ripple * 14.0f, wingSpan * (1.0f + 0.3f * ripple),
+                    thickness * (1.0f - 0.35f * ripple), gapDeg, rgb, echoAlpha, false);
         }
 
-        Identifier indicatorTex = getTextureForStyle(config.indicatorStyle);
+        // 2. Soft bloom + sharp core arc wings
+        if (cfg.glowIntensity > 0.01f) {
+            drawArc(ctx, BAND_GLOW, radius, wingSpan * 1.1f, thickness * 4.0f, gapDeg * 0.8f, rgb,
+                    alpha * Math.min(1.0f, 0.34f * cfg.glowIntensity), dashed);
+        }
+        drawArc(ctx, BAND_CORE, radius, wingSpan, thickness, gapDeg, rgb, alpha, dashed);
 
-        // 1. Layer 1: Expanding Acoustic Shockwave Ripple
-        if (config.showRipples && hit.rippleProgress < 0.95f) {
-            float rippleDist = baseDistance + (hit.rippleProgress * 12.0f);
-            float rippleAlpha = baseAlpha * (1.0f - hit.rippleProgress) * 0.6f;
-            float rippleSize = size * (1.0f + hit.rippleProgress * 0.2f);
-            drawTextureAt(ctx, SHOCKWAVE_TEXTURE, 0, -rippleDist, rippleSize, r, g, b, rippleAlpha);
+        // 3. Tactical outward chevron pointer
+        if (cfg.indicatorStyle == SoundVisualizerConfig.IndicatorStyle.CHEVRON) {
+            float chevronBaseR = radius + (cfg.showIcons ? iconSize * 0.5f : 0.0f) + 4.0f + thickness;
+            drawChevron(ctx, chevronBaseR, thickness, rgb, alpha);
         }
 
-        // 2. Layer 2: Ambient Bloom / Glow Halo
-        if (config.glowIntensity > 0.05f) {
-            float glowAlpha = baseAlpha * 0.4f * config.glowIntensity;
-            float glowSize = size * 1.25f;
-            drawTextureAt(ctx, indicatorTex, 0, -baseDistance, glowSize, r, g, b, glowAlpha);
+        // 4. Upright category icon centered on the arc
+        if (cfg.showIcons) {
+            pose.pushMatrix();
+            pose.translate(0.0f, -radius);
+            pose.rotate((float) Math.toRadians(-angleDeg));
+
+            if (cfg.iconBackdrop) {
+                drawCentered(ctx, DISC, iconSize * 1.7f, argb(0x000000, alpha * 0.55f));
+                drawCentered(ctx, DISC, iconSize * 1.3f, argb(rgb, alpha * 0.18f));
+            }
+            int iconRgb = cfg.tintIcons ? mix(rgb, 0xFFFFFF, 0.35f) : 0xFFFFFF;
+            drawCentered(ctx, category.getIcon(), iconSize, argb(iconRgb, alpha));
+            pose.popMatrix();
         }
 
-        // 3. Layer 3: Sharp Core Indicator
-        drawTextureAt(ctx, indicatorTex, 0, -baseDistance, size, r, g, b, baseAlpha);
+        pose.popMatrix();
+    }
 
-        // 4. Layer 4: Category Icon (Centered in the cradle on the line!)
-        if (config.showIcons) {
-            ctx.pose().pushMatrix();
-            pose.translate(0, -baseDistance); // Right on the arc line!
-            pose.rotate((float) Math.toRadians(-relativeAngle)); // Keep icon upright
+    /**
+     * Draws symmetric arc wings starting cleanly outside {@code gapDeg}.
+     * {@code wingSpan} controls total visible wing sweep so the icon gap never
+     * swallows the arc at small span settings.
+     */
+    private static void drawArc(GuiGraphicsExtractor ctx, Identifier tex, float radius, float wingSpan,
+                                float thickness, float gapDeg, int rgb, float alpha, boolean dashed) {
+        if (alpha <= 0.004f || thickness <= 0.05f) return;
 
-            Identifier iconTex = getIconForCategory(hit.category);
-            float iconScale = 0.85f * hit.scale * config.iconScale;
+        float wingHalf = Math.max(8.0f, wingSpan * 0.5f);
+        float outerHalf = Math.min(165.0f, gapDeg + wingHalf);
+        float totalSpan = outerHalf * 2.0f;
+        int steps = Math.max(12, Mth.ceil(totalSpan / STEP_DEGREES));
+        float step = totalSpan / steps;
 
-            int aInt = Math.max(0, Math.min(255, (int) (baseAlpha * 255.0f)));
-            int rInt = Math.max(0, Math.min(255, (int) (r * baseAlpha * 255.0f)));
-            int gInt = Math.max(0, Math.min(255, (int) (g * baseAlpha * 255.0f)));
-            int bInt = Math.max(0, Math.min(255, (int) (b * baseAlpha * 255.0f)));
-            int iconColor = (aInt << 24) | (rInt << 16) | (gInt << 8) | bInt;
+        for (int i = 0; i < steps; i++) {
+            float a0 = -outerHalf + i * step;
+            float a1 = a0 + step;
+            float mid = Math.abs((a0 + a1) * 0.5f);
+            if (mid < gapDeg) continue;
 
-            pose.scale(iconScale, iconScale);
-            ctx.blit(RenderPipelines.GUI_TEXTURED_PREMULTIPLIED_ALPHA, iconTex, -8, -8, 0, 0, 16, 16, 16, 16, iconColor);
+            float fromGap = mid - gapDeg;
+            if (dashed) {
+                float cycle = fromGap % 6.0f;
+                if (cycle > 3.6f) continue;
+            }
 
-            ctx.pose().popMatrix();
+            float u = Mth.clamp(fromGap / wingHalf, 0.0f, 1.0f);
+            float taper = 1.0f - 0.6f * (u * u);
+            float tipFade = 1.0f - smoothstep(0.55f, 1.0f, u);
+            float gapFade = gapDeg > 0.0f ? smoothstep(0.0f, 0.16f, u) : 1.0f;
+            float segAlpha = alpha * tipFade * gapFade;
+            if (segAlpha <= 0.004f) continue;
+
+            drawStrip(ctx, tex, polarX(radius, a0), polarY(radius, a0), polarX(radius, a1), polarY(radius, a1),
+                    thickness * taper, argb(rgb, segAlpha));
         }
-
-        ctx.pose().popMatrix();
     }
 
-    private static Identifier getTextureForStyle(SoundVisualizerConfig.IndicatorStyle style) {
-        return switch (style) {
-            case CHEVRON -> CHEVRON_TEXTURE;
-            case RING -> RING_TEXTURE;
-            case ARC -> ARC_TEXTURE;
-        };
+    private static void drawChevron(GuiGraphicsExtractor ctx, float r, float thickness, int rgb, float alpha) {
+        float w = 4.5f + thickness;
+        float h = 3.5f + thickness * 0.8f;
+        int color = argb(rgb, alpha);
+        float t = Math.max(1.2f, thickness * 0.85f);
+        drawStrip(ctx, BAND_CORE, -w, -r, 0.0f, -r - h, t, color);
+        drawStrip(ctx, BAND_CORE, 0.0f, -r - h, w, -r, t, color);
     }
 
-    private static Identifier getIconForCategory(SoundCategory category) {
-        return switch (category) {
-            case HOSTILE -> HOSTILE_ICON;
-            case FRIENDLY -> FRIENDLY_ICON;
-            case NEUTRAL -> FOOTSTEPS_ICON;
-            case BLOCKS -> BLOCKS_ICON;
-            case PLAYER -> PLAYER_ICON;
-            case AMBIENT -> AMBIENT_ICON;
-        };
+    /** Straight strip from (x0,y0) to (x1,y1); texture V axis spans the thickness. */
+    private static void drawStrip(GuiGraphicsExtractor ctx, Identifier tex, float x0, float y0, float x1, float y1,
+                                  float thickness, int color) {
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+        float len = (float) Math.sqrt(dx * dx + dy * dy);
+        if (len < 0.001f) return;
+        Matrix3x2fStack pose = ctx.pose();
+        pose.pushMatrix();
+        pose.translate(x0, y0);
+        pose.rotate((float) Math.atan2(dy, dx));
+        pose.scale(len * 1.04f, thickness);
+        pose.translate(-0.02f, -0.5f);
+        ctx.blit(RenderPipelines.GUI_TEXTURED, tex, 0, 0, 0.0f, 0.0f, 1, 1, 1, 1, color);
+        pose.popMatrix();
     }
 
-    private static int getCategoryColor(SoundVisualizerConfig config, SoundCategory category) {
-        return switch (category) {
-            case HOSTILE -> config.colorHostile;
-            case FRIENDLY -> config.colorFriendly;
-            case NEUTRAL -> config.colorNeutral;
-            case BLOCKS -> config.colorBlocks;
-            case PLAYER -> config.colorPlayer;
-            case AMBIENT -> config.colorAmbient;
-        };
+    private static void drawCentered(GuiGraphicsExtractor ctx, Identifier tex, float size, int color) {
+        Matrix3x2fStack pose = ctx.pose();
+        pose.pushMatrix();
+        pose.scale(size, size);
+        pose.translate(-0.5f, -0.5f);
+        ctx.blit(RenderPipelines.GUI_TEXTURED, tex, 0, 0, 0.0f, 0.0f, 1, 1, 1, 1, color);
+        pose.popMatrix();
     }
 
-    private static void drawTextureAt(GuiGraphicsExtractor ctx, Identifier texture, float x, float y, float size,
-                                      float r, float g, float b, float alpha) {
-        if (alpha <= 0.005f) return;
-        int halfSize = (int) (size / 2);
-        int aInt = Math.max(0, Math.min(255, (int) (alpha * 255.0f)));
-        int rInt = Math.max(0, Math.min(255, (int) (r * alpha * 255.0f)));
-        int gInt = Math.max(0, Math.min(255, (int) (g * alpha * 255.0f)));
-        int bInt = Math.max(0, Math.min(255, (int) (b * alpha * 255.0f)));
-        int colorInt = (aInt << 24) | (rInt << 16) | (gInt << 8) | bInt;
-        ctx.blit(RenderPipelines.GUI_TEXTURED_PREMULTIPLIED_ALPHA, texture, (int) x - halfSize, (int) y - halfSize, 0f, 0f, (int) size, (int) size, (int) size, (int) size, colorInt);
+    private static float polarX(float r, float deg) {
+        return r * (float) Math.sin(Math.toRadians(deg));
+    }
+
+    private static float polarY(float r, float deg) {
+        return -r * (float) Math.cos(Math.toRadians(deg));
+    }
+
+    private static float smoothstep(float e0, float e1, float x) {
+        float t = Mth.clamp((x - e0) / (e1 - e0), 0.0f, 1.0f);
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    private static int argb(int rgb, float alpha) {
+        int a = Mth.clamp((int) (alpha * 255.0f + 0.5f), 0, 255);
+        return (a << 24) | (rgb & 0xFFFFFF);
+    }
+
+    private static int mix(int a, int b, float t) {
+        int r = (int) Mth.lerp(t, (a >> 16) & 0xFF, (b >> 16) & 0xFF);
+        int g = (int) Mth.lerp(t, (a >> 8) & 0xFF, (b >> 8) & 0xFF);
+        int bl = (int) Mth.lerp(t, a & 0xFF, b & 0xFF);
+        return (r << 16) | (g << 8) | bl;
     }
 }
