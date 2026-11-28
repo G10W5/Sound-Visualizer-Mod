@@ -5,10 +5,14 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class SoundVisualizerHit {
     private static final float FADE_IN_MS = 90.0f;
     private static final float HOLD_FRACTION = 0.25f;
+    private static final AtomicLong NEXT_ID = new AtomicLong(1L);
 
+    public final long id = NEXT_ID.getAndIncrement();
     public final Identifier soundId;
     public final SoundCategory category;
     public Vec3 position;
@@ -18,9 +22,12 @@ public class SoundVisualizerHit {
     private final long spawnTime;
     private long refreshTime;
     private boolean angleInitialized = false;
+    private boolean displayAngleInitialized = false;
 
-    // Animated state (read by the renderer)
-    public float angle = 0.0f;        // degrees, 0 = straight ahead, clockwise
+    // Animated state (read by clusterer & renderer)
+    public float angle = 0.0f;        // true direction relative to camera yaw
+    public float displayAngle = 0.0f; // visual angle (eased on cluster merge/split)
+    public long lastClusterSeedId = -1L;
     public float alpha = 0.0f;
     public float scale = 1.0f;
     public float intensity = 1.0f;    // distance/volume driven emphasis
@@ -38,7 +45,6 @@ public class SoundVisualizerHit {
     }
 
     public void refresh(Vec3 newPos, float newVolume) {
-        // Ease the tracked position toward the newest emission to avoid jumps
         this.position = position.lerp(newPos, 0.65);
         this.volume = Math.max(volume * 0.8f, newVolume);
         this.refreshTime = HudClock.now();
@@ -99,6 +105,25 @@ public class SoundVisualizerHit {
             float k = 1.0f - (float) Math.exp(-cfg.smoothingSpeed * HudClock.frameSeconds());
             angle = Mth.wrapDegrees(angle + Mth.wrapDegrees(target - angle) * k);
         }
+
+        if (!displayAngleInitialized) {
+            displayAngle = angle;
+            displayAngleInitialized = true;
+        }
+    }
+
+    /**
+     * Smoothly glides {@link #displayAngle} toward {@code targetAngle} so hits
+     * separate visually when a cluster splits on look.
+     */
+    public void easeDisplayAngle(float targetAngle, float speed, boolean smooth) {
+        if (!displayAngleInitialized || !smooth) {
+            displayAngle = targetAngle;
+            displayAngleInitialized = true;
+            return;
+        }
+        float k = 1.0f - (float) Math.exp(-speed * HudClock.frameSeconds());
+        displayAngle = Mth.wrapDegrees(displayAngle + Mth.wrapDegrees(targetAngle - displayAngle) * k);
     }
 
     public boolean isExpired() {

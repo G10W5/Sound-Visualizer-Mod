@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 public class SoundVisualizerConfig {
     public static final Logger LOGGER = LoggerFactory.getLogger("soundvisualizer-config");
     public static final SoundVisualizerConfig INSTANCE = new SoundVisualizerConfig();
-    private static final int CONFIG_VERSION = 4;
+    private static final int CONFIG_VERSION = 5;
 
     public enum IndicatorStyle {
         ARC, DASHED, CHEVRON
@@ -47,10 +47,13 @@ public class SoundVisualizerConfig {
     public boolean iconBackdrop = false;
     public boolean tintIcons = false;
 
-    // Detection
+    // Detection & Stacking
     public float maxHearingDistance = 16.0f;
     public boolean hideOwnSounds = true;
     public float mergeAngle = 18.0f;
+    public boolean stackSounds = true;
+    public float stackAngle = 36.0f;
+    public boolean splitOnLook = true;
     public boolean smoothTracking = true;
     public float smoothingSpeed = 14.0f;
     public boolean distanceScaling = true;
@@ -86,6 +89,9 @@ public class SoundVisualizerConfig {
         copy.iconScale = this.iconScale;
         copy.iconBackdrop = this.iconBackdrop;
         copy.tintIcons = this.tintIcons;
+        copy.stackSounds = this.stackSounds;
+        copy.stackAngle = this.stackAngle;
+        copy.splitOnLook = this.splitOnLook;
         copy.colorHostile = this.colorHostile;
         copy.colorFriendly = this.colorFriendly;
         copy.colorAmbient = this.colorAmbient;
@@ -170,7 +176,7 @@ public class SoundVisualizerConfig {
         int version = get(p, "configVersion", 1, Integer::parseInt);
         enabled = get(p, "enabled", enabled, Boolean::parseBoolean);
 
-        if (version >= CONFIG_VERSION) {
+        if (version >= 4) {
             indicatorStyle = get(p, "indicatorStyle", indicatorStyle, s -> IndicatorStyle.valueOf(s.toUpperCase()));
             radius = get(p, "radius", radius, Double::parseDouble);
             lineThickness = get(p, "lineThickness", lineThickness, Float::parseFloat);
@@ -185,7 +191,6 @@ public class SoundVisualizerConfig {
             iconBackdrop = get(p, "iconBackdrop", iconBackdrop, Boolean::parseBoolean);
             tintIcons = get(p, "tintIcons", tintIcons, Boolean::parseBoolean);
         } else {
-            // Migrate pre-v4 configs to Minimal visual defaults while keeping filters & category settings
             applyPreset(Preset.MINIMAL);
             opacity = get(p, "opacity", get(p, "transparency", opacity, Float::parseFloat), Float::parseFloat);
             showIcons = get(p, "showIcons", showIcons, Boolean::parseBoolean);
@@ -195,6 +200,9 @@ public class SoundVisualizerConfig {
         maxHearingDistance = get(p, "maxHearingDistance", maxHearingDistance, Float::parseFloat);
         hideOwnSounds = get(p, "hideOwnSounds", hideOwnSounds, Boolean::parseBoolean);
         mergeAngle = get(p, "mergeAngle", mergeAngle, Float::parseFloat);
+        stackSounds = get(p, "stackSounds", stackSounds, Boolean::parseBoolean);
+        stackAngle = get(p, "stackAngle", stackAngle, Float::parseFloat);
+        splitOnLook = get(p, "splitOnLook", splitOnLook, Boolean::parseBoolean);
         smoothTracking = get(p, "smoothTracking", smoothTracking, Boolean::parseBoolean);
         smoothingSpeed = get(p, "smoothingSpeed", smoothingSpeed, Float::parseFloat);
         distanceScaling = get(p, "distanceScaling", distanceScaling, Boolean::parseBoolean);
@@ -230,6 +238,9 @@ public class SoundVisualizerConfig {
         p.setProperty("maxHearingDistance", String.valueOf(maxHearingDistance));
         p.setProperty("hideOwnSounds", String.valueOf(hideOwnSounds));
         p.setProperty("mergeAngle", String.valueOf(mergeAngle));
+        p.setProperty("stackSounds", String.valueOf(stackSounds));
+        p.setProperty("stackAngle", String.valueOf(stackAngle));
+        p.setProperty("splitOnLook", String.valueOf(splitOnLook));
         p.setProperty("smoothTracking", String.valueOf(smoothTracking));
         p.setProperty("smoothingSpeed", String.valueOf(smoothingSpeed));
         p.setProperty("distanceScaling", String.valueOf(distanceScaling));

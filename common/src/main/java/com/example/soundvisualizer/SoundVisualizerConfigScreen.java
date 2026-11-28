@@ -15,7 +15,9 @@ import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix3x2fStack;
 
 import java.util.ArrayList;
@@ -115,6 +117,22 @@ public class SoundVisualizerConfigScreen {
                 .setDefaultValue(false).setTooltip(tip("tintIcons"))
                 .setSaveConsumer(v -> cfg.tintIcons = v).build();
 
+        // ------------------------------------------------------------ Detection (built before preview so stacking toggles update live)
+        ConfigCategory detect = builder.getOrCreateCategory(Component.translatable("category.soundvisualizer.detection"));
+
+        BooleanListEntry stackSoundsEntry = eb.startBooleanToggle(name("stackSounds"), cfg.stackSounds)
+                .setDefaultValue(true).setTooltip(tip("stackSounds"))
+                .setSaveConsumer(v -> cfg.stackSounds = v).build();
+
+        IntegerSliderEntry stackAngleEntry = eb.startIntSlider(name("stackAngle"), (int) cfg.stackAngle, 10, 75)
+                .setDefaultValue(36).setTooltip(tip("stackAngle"))
+                .setTextGetter(v -> Component.literal(v + "°"))
+                .setSaveConsumer(v -> cfg.stackAngle = v).build();
+
+        BooleanListEntry splitOnLookEntry = eb.startBooleanToggle(name("splitOnLook"), cfg.splitOnLook)
+                .setDefaultValue(true).setTooltip(tip("splitOnLook"))
+                .setSaveConsumer(v -> cfg.splitOnLook = v).build();
+
         // ------------------------------------------------------------ Categories (built early so preview tracks live colors)
         ConfigCategory cats = builder.getOrCreateCategory(Component.translatable("category.soundvisualizer.categories"));
         Map<SoundCategory, ColorEntry> colorEntries = new EnumMap<>(SoundCategory.class);
@@ -136,7 +154,8 @@ public class SoundVisualizerConfigScreen {
         HudPreviewEntry previewEntry = new HudPreviewEntry(
                 cfg, enabledEntry, presetEntry, styleEntry, radiusEntry, thicknessEntry,
                 spanEntry, glowEntry, opacityEntry, ripplesEntry, showIconsEntry,
-                iconScaleEntry, backdropEntry, tintEntry, colorEntries);
+                iconScaleEntry, backdropEntry, tintEntry,
+                stackSoundsEntry, stackAngleEntry, splitOnLookEntry, colorEntries);
         look.addEntry(previewEntry);
         look.addEntry(enabledEntry);
         look.addEntry(presetEntry);
@@ -153,9 +172,6 @@ public class SoundVisualizerConfigScreen {
         look.addEntry(backdropEntry);
         look.addEntry(tintEntry);
 
-        // ------------------------------------------------------------ Detection
-        ConfigCategory detect = builder.getOrCreateCategory(Component.translatable("category.soundvisualizer.detection"));
-
         detect.addEntry(eb.startIntSlider(name("maxHearingDistance"), (int) cfg.maxHearingDistance, 4, 64)
                 .setDefaultValue(16).setTooltip(tip("maxHearingDistance"))
                 .setTextGetter(v -> Component.literal(v + " blocks"))
@@ -169,6 +185,10 @@ public class SoundVisualizerConfigScreen {
                 .setDefaultValue(18).setTooltip(tip("mergeAngle"))
                 .setTextGetter(v -> Component.literal(v + "°"))
                 .setSaveConsumer(v -> cfg.mergeAngle = v).build());
+
+        detect.addEntry(stackSoundsEntry);
+        detect.addEntry(stackAngleEntry);
+        detect.addEntry(splitOnLookEntry);
 
         detect.addEntry(eb.startBooleanToggle(name("distanceScaling"), cfg.distanceScaling)
                 .setDefaultValue(true).setTooltip(tip("distanceScaling"))
@@ -191,7 +211,6 @@ public class SoundVisualizerConfigScreen {
                 .setSaveConsumer(v -> cfg.blacklist = new ArrayList<>(v)).build());
 
         builder.setSavingRunnable(() -> {
-            // Presets are applied last so they override the sliders above
             if (pendingPreset[0] != SoundVisualizerConfig.Preset.CUSTOM) {
                 cfg.applyPreset(pendingPreset[0]);
             }
@@ -203,10 +222,12 @@ public class SoundVisualizerConfigScreen {
 
     /**
      * Interactive live HUD preview rendered inside the Cloth Config Appearance list.
+     * Demonstrates both individual arcs and peripheral multi-color sound stacking.
      */
     private static final class HudPreviewEntry extends TooltipListEntry<Object> {
         private static final int BOX_HEIGHT = 132;
         private static final int PADDING_Y = 4;
+        private static final Identifier SAMPLE_ID = Identifier.fromNamespaceAndPath("soundvisualizer", "preview");
 
         private final SoundVisualizerConfig baseCfg;
         private final BooleanListEntry enabledEntry;
@@ -222,6 +243,9 @@ public class SoundVisualizerConfigScreen {
         private final IntegerSliderEntry iconScaleEntry;
         private final BooleanListEntry backdropEntry;
         private final BooleanListEntry tintEntry;
+        private final BooleanListEntry stackSoundsEntry;
+        private final IntegerSliderEntry stackAngleEntry;
+        private final BooleanListEntry splitOnLookEntry;
         private final Map<SoundCategory, ColorEntry> colorEntries;
 
         private long lastPulseMs = System.currentTimeMillis();
@@ -242,6 +266,9 @@ public class SoundVisualizerConfigScreen {
                 IntegerSliderEntry iconScaleEntry,
                 BooleanListEntry backdropEntry,
                 BooleanListEntry tintEntry,
+                BooleanListEntry stackSoundsEntry,
+                IntegerSliderEntry stackAngleEntry,
+                BooleanListEntry splitOnLookEntry,
                 Map<SoundCategory, ColorEntry> colorEntries) {
             super(name("preview"), () -> Optional.empty());
             this.baseCfg = baseCfg;
@@ -258,6 +285,9 @@ public class SoundVisualizerConfigScreen {
             this.iconScaleEntry = iconScaleEntry;
             this.backdropEntry = backdropEntry;
             this.tintEntry = tintEntry;
+            this.stackSoundsEntry = stackSoundsEntry;
+            this.stackAngleEntry = stackAngleEntry;
+            this.splitOnLookEntry = splitOnLookEntry;
             this.colorEntries = colorEntries;
         }
 
@@ -267,6 +297,9 @@ public class SoundVisualizerConfigScreen {
             snap.opacity = opacityEntry.getValue() / 100.0f;
             snap.showIcons = Boolean.TRUE.equals(showIconsEntry.getValue());
             snap.tintIcons = Boolean.TRUE.equals(tintEntry.getValue());
+            snap.stackSounds = Boolean.TRUE.equals(stackSoundsEntry.getValue());
+            snap.stackAngle = stackAngleEntry.getValue();
+            snap.splitOnLook = Boolean.TRUE.equals(splitOnLookEntry.getValue());
 
             for (Map.Entry<SoundCategory, ColorEntry> e : colorEntries.entrySet()) {
                 snap.setColor(e.getKey(), e.getValue().getValue());
@@ -288,6 +321,18 @@ public class SoundVisualizerConfigScreen {
             return snap;
         }
 
+        private static SoundVisualizerHit sampleHit(SoundCategory cat, float angleDeg, float alpha,
+                                                    float scale, float ripple, float flash) {
+            SoundVisualizerHit h = new SoundVisualizerHit(SAMPLE_ID, Vec3.ZERO, 1.0f, cat);
+            h.angle = angleDeg;
+            h.displayAngle = angleDeg;
+            h.alpha = alpha;
+            h.scale = scale;
+            h.ripple = ripple;
+            h.flash = flash;
+            return h;
+        }
+
         @Override
         public void extractRenderState(GuiGraphicsExtractor ctx, int index, int y, int x, int entryWidth,
                                        int entryHeight, int mouseX, int mouseY, boolean isHovered, float delta) {
@@ -302,7 +347,6 @@ public class SoundVisualizerConfigScreen {
             this.lastBoxW = boxW;
             this.lastBoxH = boxH;
 
-            // Dark sky-to-horizon backdrop so both white/pastel and dark outlines are easy to judge
             ctx.fillGradient(boxX, boxY, boxX + boxW, boxY + boxH, 0xCC121722, 0xCC1E2634);
             ctx.outline(boxX, boxY, boxW, boxH, isHovered ? 0x99FFFFFF : 0x558899AA);
 
@@ -314,7 +358,6 @@ public class SoundVisualizerConfigScreen {
             float cx = boxX + boxW / 2.0f;
             float cy = boxY + boxH / 2.0f + 4.0f;
 
-            // Subtle crosshair
             ctx.fill((int) cx - 5, (int) cy, (int) cx + 6, (int) cy + 1, 0x99FFFFFF);
             ctx.fill((int) cx, (int) cy - 5, (int) cx + 1, (int) cy + 6, 0x99FFFFFF);
 
@@ -326,7 +369,6 @@ public class SoundVisualizerConfigScreen {
                 return;
             }
 
-            // Periodic gentle pulse every 2.2s, or immediate on click
             long now = System.currentTimeMillis();
             if (now - lastPulseMs > 2200L) {
                 lastPulseMs = now;
@@ -338,22 +380,24 @@ public class SoundVisualizerConfigScreen {
                     ? 1.0f + (float) Math.sin((sincePulse / 260.0f) * Math.PI) * 0.14f
                     : 1.0f;
 
-            // Scale down smoothly only when radius would exceed the preview frame
             float maxPreviewRadius = (boxH * 0.5f) - 18.0f;
             float needed = (float) snap.radius + 12.0f;
             float fitScale = needed > maxPreviewRadius ? maxPreviewRadius / needed : 1.0f;
+
+            // Left pair (-56° Hostile, -36° Ambient) shows multi-color gradient stacking when enabled
+            List<SoundVisualizerHit> samples = List.of(
+                    sampleHit(SoundCategory.HOSTILE, -56.0f, 1.0f, pop, ripple, flash),
+                    sampleHit(SoundCategory.AMBIENT, -36.0f, 0.92f, 1.0f, 1.0f, 0.0f),
+                    sampleHit(SoundCategory.FRIENDLY, 62.0f, 0.9f, 1.0f, 1.0f, 0.0f),
+                    sampleHit(SoundCategory.NEUTRAL, 158.0f, 0.72f, 1.0f, 1.0f, 0.0f)
+            );
 
             Matrix3x2fStack pose = ctx.pose();
             pose.pushMatrix();
             pose.translate(cx, cy);
             pose.scale(fitScale, fitScale);
 
-            SoundIndicatorRenderer.renderPreviewIndicator(
-                    ctx, 0.0f, 0.0f, snap, SoundCategory.HOSTILE, -48.0f, 1.0f, pop, ripple, flash);
-            SoundIndicatorRenderer.renderPreviewIndicator(
-                    ctx, 0.0f, 0.0f, snap, SoundCategory.FRIENDLY, 62.0f, 0.9f, 1.0f, 1.0f, 0.0f);
-            SoundIndicatorRenderer.renderPreviewIndicator(
-                    ctx, 0.0f, 0.0f, snap, SoundCategory.NEUTRAL, 158.0f, 0.72f, 1.0f, 1.0f, 0.0f);
+            SoundIndicatorRenderer.renderPreviewClusters(ctx, 0.0f, 0.0f, snap, samples);
 
             pose.popMatrix();
             ctx.disableScissor();
