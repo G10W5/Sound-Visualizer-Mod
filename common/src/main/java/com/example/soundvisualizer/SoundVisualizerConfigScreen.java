@@ -325,7 +325,8 @@ public class SoundVisualizerConfigScreen {
                                                     float scale, float ripple, float flash) {
             SoundVisualizerHit h = new SoundVisualizerHit(SAMPLE_ID, Vec3.ZERO, 1.0f, cat);
             h.angle = angleDeg;
-            h.displayAngle = angleDeg;
+            h.lastRenderedAngle = angleDeg;
+            h.hasRenderedAngle = true;
             h.alpha = alpha;
             h.scale = scale;
             h.ripple = ripple;

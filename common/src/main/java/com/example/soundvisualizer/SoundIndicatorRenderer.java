@@ -14,8 +14,8 @@ import java.util.List;
 
 /**
  * Procedural HUD renderer. Arcs are built from tangent-aligned strips whose
- * texture only carries a radial alpha profile, so span, thickness, icon gaps,
- * and multi-color cluster gradients stay sharp at any size.
+ * texture only carries a radial alpha profile, supporting smooth wing unfurl
+ * animations, sliding icon slots, and multi-color cluster gradients.
  */
 public class SoundIndicatorRenderer {
     private static final Identifier BAND_CORE = id("textures/gui/band_core.png");
@@ -88,12 +88,23 @@ public class SoundIndicatorRenderer {
 
         float iconSize = ICON_BASE * cfg.iconScale * cluster.scale;
         List<SoundCategory> shownIcons = selectShownIcons(cluster);
-        float subSize = shownIcons.size() >= 2 ? iconSize * 0.82f : iconSize;
-        float dualOffset = shownIcons.size() >= 2 ? subSize * 0.54f : 0.0f;
 
-        float gapDeg = cfg.showIcons
-                ? (float) Math.toDegrees(Math.atan((dualOffset + subSize * 0.5f + 2.8f) / Math.max(8.0f, radius)))
-                : 0.0f;
+        // Compute animated icon offsets relative to cluster.angle so merging icons glide smoothly
+        float[] localSlotDegs = new float[shownIcons.size()];
+        float maxSlotDeg = 0.0f;
+        for (int i = 0; i < shownIcons.size(); i++) {
+            float deg = Mth.clamp(Mth.wrapDegrees(cluster.iconSlotAngles[i] - cluster.angle), -26.0f, 26.0f);
+            localSlotDegs[i] = deg;
+            maxSlotDeg = Math.max(maxSlotDeg, Math.abs(deg));
+        }
+
+        float maxIconScale = 0.0f;
+        for (float s : cluster.iconSlotScales) {
+            maxIconScale = Math.max(maxIconScale, s);
+        }
+        float refIconHalf = iconSize * Math.max(0.75f, maxIconScale) * 0.5f + 2.8f;
+        float halfIconDeg = (float) Math.toDegrees(Math.atan(refIconHalf / Math.max(8.0f, radius)));
+        float gapDeg = cfg.showIcons ? (maxSlotDeg + halfIconDeg) : 0.0f;
 
         Matrix3x2fStack pose = ctx.pose();
         pose.pushMatrix();
@@ -107,42 +118,46 @@ public class SoundIndicatorRenderer {
             float echoAlpha = alpha * (1.0f - cluster.ripple) * (1.0f - cluster.ripple) * 0.55f;
             drawArc(ctx, BAND_CORE, radius + cluster.ripple * 14.0f,
                     wingSpan * (1.0f + 0.3f * cluster.ripple),
-                    thickness * (1.0f - 0.35f * cluster.ripple), gapDeg, arcColors, echoAlpha, false);
+                    thickness * (1.0f - 0.35f * cluster.ripple), gapDeg, arcColors, echoAlpha,
+                    cluster.leftWingFactor, cluster.rightWingFactor, false);
         }
 
-        // 2. Soft bloom + sharp core arc wings (supports multi-color gradient)
+        // 2. Soft bloom + sharp core arc wings (supports asymmetric unfurl & gradients)
         if (cfg.glowIntensity > 0.01f) {
             drawArc(ctx, BAND_GLOW, radius, wingSpan * 1.1f, thickness * 4.0f, gapDeg * 0.8f, arcColors,
-                    alpha * Math.min(1.0f, 0.34f * cfg.glowIntensity), dashed);
+                    alpha * Math.min(1.0f, 0.34f * cfg.glowIntensity),
+                    cluster.leftWingFactor, cluster.rightWingFactor, dashed);
         }
-        drawArc(ctx, BAND_CORE, radius, wingSpan, thickness, gapDeg, arcColors, alpha, dashed);
+        drawArc(ctx, BAND_CORE, radius, wingSpan, thickness, gapDeg, arcColors, alpha,
+                cluster.leftWingFactor, cluster.rightWingFactor, dashed);
 
         // 3. Tactical outward chevron pointer
         if (cfg.indicatorStyle == SoundVisualizerConfig.IndicatorStyle.CHEVRON) {
-            float chevronBaseR = radius + (cfg.showIcons ? subSize * 0.5f : 0.0f) + 4.0f + thickness;
+            float chevronBaseR = radius + (cfg.showIcons ? refIconHalf : 0.0f) + 2.0f + thickness;
             int centerRgb = sampleColor(arcColors, 0.5f);
             drawChevron(ctx, chevronBaseR, thickness, centerRgb, alpha);
         }
 
-        // 4. Upright category icon(s) aligned with their respective color wings
+        // 4. Upright category icon(s) sliding smoothly along the ring
         if (cfg.showIcons && !shownIcons.isEmpty()) {
-            if (shownIcons.size() == 1) {
-                drawCategoryIcon(ctx, cfg, shownIcons.get(0), 0.0f, -radius, cluster.angle, subSize, alpha);
-            } else {
-                drawCategoryIcon(ctx, cfg, shownIcons.get(0), -dualOffset, -radius, cluster.angle, subSize, alpha);
-                drawCategoryIcon(ctx, cfg, shownIcons.get(1), dualOffset, -radius, cluster.angle, subSize, alpha);
+            for (int i = 0; i < shownIcons.size(); i++) {
+                float slotDeg = localSlotDegs[i];
+                float slotSize = iconSize * cluster.iconSlotScales[i];
+                float lx = polarX(radius, slotDeg);
+                float ly = polarY(radius, slotDeg);
+                drawCategoryIcon(ctx, cfg, shownIcons.get(i), lx, ly, cluster.angle, slotSize, alpha);
+            }
 
-                if (uniqueCats > 2) {
-                    Font font = Minecraft.getInstance().font;
-                    String badge = "+" + (uniqueCats - 2);
-                    pose.pushMatrix();
-                    pose.translate(0.0f, -radius);
-                    pose.rotate((float) Math.toRadians(-cluster.angle));
-                    pose.scale(0.65f, 0.65f);
-                    ctx.centeredText(font, badge, 0, Math.round((subSize * 0.52f + 2.0f) / 0.65f),
-                            argb(0xFFFFFF, alpha * 0.9f));
-                    pose.popMatrix();
-                }
+            if (uniqueCats > 2) {
+                Font font = Minecraft.getInstance().font;
+                String badge = "+" + (uniqueCats - 2);
+                pose.pushMatrix();
+                pose.translate(0.0f, -radius);
+                pose.rotate((float) Math.toRadians(-cluster.angle));
+                pose.scale(0.65f, 0.65f);
+                ctx.centeredText(font, badge, 0, Math.round((iconSize * 0.82f * 0.52f + 2.0f) / 0.65f),
+                        argb(0xFFFFFF, alpha * 0.9f));
+                pose.popMatrix();
             }
         }
 
@@ -170,7 +185,6 @@ public class SoundIndicatorRenderer {
     private static int[] buildArcColors(SoundVisualizerConfig cfg, SoundClusterer.Cluster cluster) {
         List<SoundCategory> cats = cluster.orderedCategories;
         if (cats.size() > 3) {
-            // Keep the 3 highest-priority categories while preserving their left-to-right order
             List<SoundCategory> top3 = cluster.priorityCategories.subList(0, 3);
             List<SoundCategory> filtered = new ArrayList<>(3);
             for (SoundCategory c : cats) {
@@ -196,11 +210,12 @@ public class SoundIndicatorRenderer {
     }
 
     /**
-     * Draws symmetric arc wings starting outside {@code gapDeg}, blending smoothly
-     * across {@code colors} from left ({@code a < 0}) to right ({@code a > 0}).
+     * Draws symmetric arc wings starting outside {@code gapDeg}, supporting
+     * asymmetric wing unfurling during smooth demerge animations.
      */
     private static void drawArc(GuiGraphicsExtractor ctx, Identifier tex, float radius, float wingSpan,
-                                float thickness, float gapDeg, int[] colors, float alpha, boolean dashed) {
+                                float thickness, float gapDeg, int[] colors, float alpha,
+                                float leftWingFactor, float rightWingFactor, boolean dashed) {
         if (alpha <= 0.004f || thickness <= 0.05f || colors.length == 0) return;
 
         float wingHalf = Math.max(8.0f, wingSpan * 0.5f);
@@ -216,17 +231,24 @@ public class SoundIndicatorRenderer {
             float mid = Math.abs(midSigned);
             if (mid < gapDeg) continue;
 
+            float wingFactor = (midSigned < 0.0f) ? leftWingFactor : rightWingFactor;
+            if (wingFactor <= 0.01f) continue;
+
             float fromGap = mid - gapDeg;
+            float sideWingHalf = wingHalf * wingFactor;
+            if (fromGap > sideWingHalf) continue;
+
             if (dashed) {
                 float cycle = fromGap % 6.0f;
                 if (cycle > 3.6f) continue;
             }
 
-            float u = Mth.clamp(fromGap / wingHalf, 0.0f, 1.0f);
+            float u = Mth.clamp(fromGap / Math.max(0.5f, sideWingHalf), 0.0f, 1.0f);
             float taper = 1.0f - 0.6f * (u * u);
             float tipFade = 1.0f - smoothstep(0.55f, 1.0f, u);
             float gapFade = gapDeg > 0.0f ? smoothstep(0.0f, 0.16f, u) : 1.0f;
-            float segAlpha = alpha * tipFade * gapFade;
+            float unfurlFade = smoothstep(0.0f, 0.45f, wingFactor);
+            float segAlpha = alpha * tipFade * gapFade * unfurlFade;
             if (segAlpha <= 0.004f) continue;
 
             float s = Mth.clamp((midSigned + outerHalf) / totalSpan, 0.0f, 1.0f);
